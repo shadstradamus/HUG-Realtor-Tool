@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>San Andreas MLS — Department of Housing and Urban Gentrification</title>
+<title>San Andreas MLS · Department of Housing and Urban Gentrification</title>
 <meta name="description" content="San Andreas Multiple Listing Service, operated by the Department of Housing and Urban Gentrification.">
 <meta name="theme-color" content="#0a1f44">
 <link rel="icon" type="image/png" href="img/favicon.png">
@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700;900&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
-<link rel="stylesheet" href="css/hug.css?v=202611240830">
+<link rel="stylesheet" href="css/hug.css?v=202611240915">
 </head>
 <body data-mode="agency">
 <div class="shell">
@@ -191,7 +191,7 @@
         <div class="panel">
           <h2>Payment calculator</h2>
           <div class="body">
-            <p class="note" style="margin:0 0 12px">Nothing is saved here &mdash; the money moves in game.</p>
+            <p class="note" style="margin:0 0 12px">Nothing is saved here. The money moves in game.</p>
             <div class="grid2" style="margin-bottom:12px">
               <div><label class="lab" for="lnProp">Start from a saved appraisal</label><select id="lnProp"></select></div>
               <div><label class="lab" for="lnPrice">Sale price ($)</label><input id="lnPrice" type="number" min="0"></div>
@@ -303,20 +303,20 @@
         <div class="panel">
           <h2>Your agency's records</h2>
           <div class="body">
-            <p class="note" style="margin:0">Your properties, clients and pictures are kept in this browser on this device. Nothing is sent to the Department or anyone else. Export a backup regularly, and use it to move to another device or browser.</p>
+            <p class="note" style="margin:0">Your properties, clients and photos are kept in this browser on this device. Nothing is sent to the Department or anyone else. Export a backup regularly, and use it to move to another device or browser.</p>
             <div class="row" style="margin:12px 0">
               <button class="btn primary" id="btnExport">Export backup</button>
               <button class="btn icon-btn" id="btnLoad">Load file</button>
               <button class="btn" id="btnCsv">Spreadsheet</button>
               <input type="file" id="loadFile" accept=".json" hidden>
             </div>
-            <p class="note">Load file takes a backup — you can also drop the file
+            <p class="note">Load file takes a backup, or you can drop the file
             anywhere on the page. Spreadsheet writes your listings out as a CSV for Excel or Google Sheets.</p>
             <div id="storageInfo"></div>
             <div class="director-only">
             <hr style="border:0;border-top:1px solid var(--rule);margin:16px 0">
             <h3 style="font:700 15px/1.3 var(--serif);color:var(--navy);margin-bottom:6px">Rules pack</h3>
-            <p class="note" style="margin:0">Zones, price bands and multipliers only — no properties, clients or pictures.</p>
+            <p class="note" style="margin:0">Zones, price bands and multipliers only. No properties, clients or photos.</p>
             <div id="packInfo" style="margin:10px 0"></div>
             <div class="row">
               <button class="btn" id="btnPackExport">Export rules pack</button>
@@ -324,7 +324,7 @@
             </div>
             <hr style="border:0;border-top:1px solid var(--rule);margin:16px 0">
             <h3 style="font:700 15px/1.3 var(--serif);color:var(--navy);margin-bottom:6px">Start over</h3>
-            <p class="note" style="margin:0">Wipes every property, client and picture in this browser.</p>
+            <p class="note" style="margin:0">Wipes every property, client and photo in this browser.</p>
             <div class="row" style="margin-top:10px"><button class="btn danger" id="btnWipe">Erase all data</button></div>
           </div>
         </div>
@@ -357,7 +357,7 @@
 
 <div class="scrim" id="scrim"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="js/assets.js?v=202611240830"></script>
-<script src="js/app.js?v=202611240830"></script>
+<script src="js/assets.js?v=202611240915"></script>
+<script src="js/app.js?v=202611240915"></script>
 </body>
 </html>

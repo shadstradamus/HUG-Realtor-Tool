@@ -104,7 +104,7 @@ function legacyMods() {
     // value / value2  drive the legacy multiplier model
     // pct / pctExtra / options[].pct drive the modern model
     { id: "rooms",       label: "Rooms",                       group: "Counts", kind: "count",  value: 1.1, pct: 0,
-      hint: "Rooms only \u2014 hallways don't count. Four rooms is the baseline." },
+      hint: "Rooms only. Hallways don't count, and four rooms is the baseline." },
     { id: "pools",       label: "Pools",                       group: "Counts", kind: "tiered", value: 1.4, value2: 1.2,
       pct: 4, pctExtra: -2, hint: "A second pool eats the yard and costs value" },
     { id: "garages",     label: "Garages",                     group: "Counts", kind: "count",  value: 1.1,
@@ -147,7 +147,7 @@ function legacyMods() {
     { id: "panic",       label: "Panic mode lockdown",         group: "Disclosures and hazards", kind: "toggle", value: 8, special: true },
     { id: "cougars",     label: "Cougars spawn in the garden", group: "Disclosures and hazards", kind: "toggle", value: 0.9, penaltyPct: 10 },
     { id: "death",       label: "Recorded death in the house", group: "Disclosures and hazards", kind: "toggle", value: 0.8, penaltyPct: 12,
-      hint: "A stigmatised property sells slower, not cheaper by much" },
+      hint: "A stigmatized property sells slower, not cheaper by much" },
     { id: "crimeArea",   label: "Violent crime area",          group: "Disclosures and hazards", kind: "toggle", value: 0.9, penaltyPct: 10,
       hint: "Players are known to be robbed here" }
   ];
@@ -509,6 +509,8 @@ const ICON_DOWN = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" s
 /* ---------- helpers ---------- */
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+/* Lowercase a label for use mid-sentence, keeping short forms like MLO. */
+const lcPhrase = t => String(t || "").replace(/[A-Za-z]+/g, w => /^[A-Z]{2,}$/.test(w) ? w : w.toLowerCase());
 const money = n => "$" + Math.round(n || 0).toLocaleString("en-US");
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
@@ -575,7 +577,7 @@ function appraiseLegacy(f) {
     if (m.requires && !entries[m.requires]) {
       if (entries[m.id]) {
         const parent = modById(m.requires);
-        notes.push(m.label + " only counts with " + (parent ? parent.label.toLowerCase() : "its parent") + " — ignored.");
+        notes.push(m.label + " only counts with " + (parent ? lcPhrase(parent.label) : "its parent") + ", so it was left out.");
       }
       return;
     }
@@ -588,7 +590,7 @@ function appraiseLegacy(f) {
         notes.push(m.label + " is outside the " + trim(lo) + "–" + trim(hi) + "× band the house rules allow.");
     }
     (m.outside ? outside : inside).push({ label: r.label, val: r.mult });
-    if (m.forcesAuction && S.rules.policy.auctionsEnabled) auctionWhy.push(m.label.toLowerCase());
+    if (m.forcesAuction && S.rules.policy.auctionsEnabled) auctionWhy.push(lcPhrase(m.label));
   });
 
   const insideProduct = inside.reduce((a, m) => a * m.val, 1);
@@ -702,12 +704,12 @@ function appraiseModern(f) {
     if (m.requires && !entries[m.requires]) {
       if (entries[m.id]) {
         const parent = modById(m.requires);
-        notes.push(m.label + " only counts with " + (parent ? parent.label.toLowerCase() : "its parent") + " \u2014 ignored.");
+        notes.push(m.label + " only counts with " + (parent ? lcPhrase(parent.label) : "its parent") + ", so it was left out.");
       }
       return;
     }
     if (m.id === "rooms" || !entryCount(m, entries[m.id])) return;
-    if (m.forcesAuction && P.auctionsEnabled) auctionWhy.push(m.label.toLowerCase());
+    if (m.forcesAuction && P.auctionsEnabled) auctionWhy.push(lcPhrase(m.label));
     if (isSpecialUse(m)) { specialUses.push(m.label); return; }
     if (penaltyPctOf(m)) { penalties.push({ label: m.label, pct: penaltyPctOf(m) }); return; }
     const feature = modernFeatureValue(m, entries[m.id]);
@@ -739,7 +741,7 @@ function appraiseModern(f) {
   const give = waived ? 1 : Math.max(0, Math.min(1, P.boundGive / 100));
   const residential = waived ? beforeBounds : softBound(beforeBounds, floor, ceiling, give);
   if (waived && ((ceiling && beforeBounds > ceiling) || (floor && beforeBounds < floor)))
-    notes.push("Zone bounds waived" + (f.boundsReason ? " \u2014 " + f.boundsReason : "") + ".");
+    notes.push("Zone bounds waived" + (f.boundsReason ? ": " + f.boundsReason : "") + ".");
 
   const specialPremium = Math.max(0, +f.specialPremium || 0);
   const appraisal = Math.floor(residential + specialPremium);
@@ -772,19 +774,19 @@ function listingCopy(f, r) {
     if (m.requires && !(f.mods || {})[m.requires]) return;
     if (m.id === "rooms" || isSpecialUse(m)) return;
     const d = describeMod(m, (f.mods || {})[m.id]);
-    if (d) feats.push(d.toLowerCase());
+    if (d) feats.push(lcPhrase(d));
   });
   const L = [];
-  L.push("DYNASTY 8 — " + (f.address || "New listing"));
+  L.push("DYNASTY 8 \u00b7 " + (f.address || "New listing"));
   L.push(r.zone.name + (r.sqft ? " \u00b7 " + r.sqft.toLocaleString() + " sq ft" : ""));
   L.push("");
   L.push(feats.length ? feats.join(", ").replace(/^./, s => s.toUpperCase()) + "." : "Viewing by appointment.");
   L.push("");
-  L.push(r.auction ? "AUCTION — opening at " + money(r.list) + "." : "Asking " + money(r.list) + ".");
+  L.push(r.auction ? "AUCTION. Opening at " + money(r.list) + "." : "Asking " + money(r.list) + ".");
   if (r.furnAdd) L.push("Sold furnished; furniture included in the asking price.");
   if (financingOn()) L.push("Loans available with " + S.rules.policy.minDownPct + "% down.");
   L.push("");
-  L.push("Enquiries welcome.");
+  L.push("Inquiries welcome.");
   return L.join("\n");
 }
 /* ============================================================
@@ -862,7 +864,7 @@ function setSectionOpen(name, open) {
 function describeMod(m, entry) {
   const n = entryCount(m, entry);
   if (!n) return null;
-  if (m.kind === "count" || m.kind === "tiered") return n + " " + m.label.toLowerCase();
+  if (m.kind === "count" || m.kind === "tiered") return n + " " + lcPhrase(m.label);
   if (m.kind === "choice") return m.label + ": " + entry;
   if (m.kind === "free") return ((entry || {}).note || m.label) + (n > 1 ? " \u00d7" + n : "");
   return m.label;
@@ -875,7 +877,7 @@ function sectionSummary(inGroup) {
     const v = (F.mods || {})[m.id];
     if (m.requires && !(F.mods || {})[m.requires]) return;
     const d = describeMod(m, v);
-    if (d) bits.push(d.toLowerCase());
+    if (d) bits.push(lcPhrase(d));
   });
   return bits;
 }
@@ -894,7 +896,7 @@ function renderAppraiseForm() {
 
   const zoneOpts = S.zones.map(z =>
     '<option value="' + z.id + '"' + (String(F.zone) === String(z.id) ? " selected" : "") + '>' +
-    esc(z.name) + (z.unique ? " (Estate)" : "") + " \u2014 " + money(z.base) + '</option>').join("");
+    esc(z.name) + (z.unique ? " (Estate)" : "") + " \u00b7 " + money(z.base) + '</option>').join("");
   const roomsMod = modById("rooms");
 
   /* the three things that move the number most, up top and always visible */
@@ -965,18 +967,18 @@ function renderAppraiseForm() {
     (shots ? '<span class="foldcount">' + shots + '</span>' : '') + '</button></legend>' +
     (photosOpen ? '<div class="foldbody">' +
       '<div id="photoDrop"><div id="photoStrip"></div>' +
-      '<p class="note dropnote">Drop pictures here</p></div>' +
+      '<p class="note dropnote">Drop photos here</p></div>' +
       '<div class="row" style="margin-top:9px">' +
-        '<button class="btn sm" id="btnPickPhoto">Choose pictures</button>' +
+        '<button class="btn sm" id="btnPickPhoto">Choose photos</button>' +
         '<input type="file" id="photoFile" accept="image/*" multiple hidden>' +
-        '<span class="note">kept on this machine</span>' +
+        '<span class="note">Kept on this device</span>' +
       '</div>' +
       '<div class="row" style="margin-top:6px">' +
         '<input id="photoUrl" placeholder="or paste a link\u2026" style="flex:1">' +
         '<button class="btn sm" id="btnAddPhoto">Add</button>' +
         '<button class="btn sm" id="btnTestPhoto">Check it</button>' +
       '</div><div id="photoHint"></div>' +
-      '<p class="note" style="margin-top:7px">Links work too \u2014 postimg, imgur, FiveManage, ' +
+      '<p class="note" style="margin-top:7px">Links work too: postimg, imgur, FiveManage or ' +
       'your own host. Discord links expire, so add those as files.</p></div>'
       : '<p class="note foldsum">' + (shots ? shots + (shots === 1 ? " photo" : " photos") : "none yet") + '</p>') +
     '</fieldset>';
@@ -1111,7 +1113,7 @@ function normalisePhotoUrl(raw) {
   // postimg: the share page is postimg.cc/<id>, the file lives on i.postimg.cc
   m = url.match(/^https?:\/\/(?:www\.)?postimg\.cc\/([A-Za-z0-9]+)\/?$/);
   if (m) note = "That is the postimg share page. Open it, right-click the picture " +
-    "and copy the image address \u2014 it should start with i.postimg.cc.";
+    "and copy the image address. It should start with i.postimg.cc.";
 
   // google drive
   m = url.match(/^https?:\/\/drive\.google\.com\/file\/d\/([^/]+)/);
@@ -1131,7 +1133,7 @@ function normalisePhotoUrl(raw) {
 
   // discord signs its links and they die within about a day
   if (/^https?:\/\/(?:cdn|media)\.discordapp\.(?:com|net)\//.test(url))
-    note = "Discord links expire after about a day. Add the picture as a file instead.";
+    note = "Discord links expire after about a day. Add the photo as a file instead.";
 
   const looksLikeFile = /\.(png|jpe?g|gif|webp|avif|bmp)(\?|#|$)/i.test(url) ||
     /i\.imgur\.com|i\.postimg\.cc|fivemanage|raw\.githubusercontent|drive\.google\.com\/uc/.test(url);
@@ -1154,10 +1156,10 @@ function photoGrid(list, opts) {
       (local
         ? '<img alt="" data-localkey="' + esc(p.key) + '" data-shot="' + i + '">'
         : '<img alt="" src="' + esc(p.url) + '" data-shot="' + i + '" onerror="shotFailed(this)">') +
-      '<div class="brokenmsg">This host won\u2019t serve the image here. Check it opens below \u2014 ' +
-      'if it does, save the picture and add it as a file instead.</div>' +
+      '<div class="brokenmsg">This host won\u2019t serve the image here. Check it opens below. ' +
+      'If it does, save the photo and add it as a file instead.</div>' +
       '<figcaption class="shoturl" data-url="' + esc(local ? "" : (p.url || "")) + '">' + esc(label) +
-      (local ? '<span class="shotopen">stored on this device</span>'
+      (local ? '<span class="shotopen">Stored on this device</span>'
              : '<a class="shotopen" href="' + esc(p.url) + '" target="_blank" rel="noopener noreferrer">Open in a tab</a>') +
       '</figcaption>' +
       (opts && opts.removable
@@ -1206,21 +1208,21 @@ function testPhotoUrl(raw) {
   const finish = html => { if (settled) return; settled = true; box.innerHTML = html; };
 
   const img = new Image();
-  img.onload = () => finish('<div class="ok" style="margin-top:8px"><strong>Loaded fine</strong> \u2014 ' +
+  img.onload = () => finish('<div class="ok" style="margin-top:8px"><strong>Loaded fine.</strong> ' +
     img.naturalWidth + '\u00d7' + img.naturalHeight + ' in ' + (Date.now() - started) + 'ms. ' +
     'Add it and it will show.</div>');
   img.onerror = () => {
     const causes = [];
-    if (!online) causes.push("This browser reports it is offline. A link cannot load without a connection \u2014 " +
-      "add the picture as a file instead.");
+    if (!online) causes.push("This browser reports it is offline, and a link can't load without a connection. " +
+      "Add the photo as a file instead.");
     if (location.protocol === "file:")
       causes.push("This page is running from a file on disk, and a few hosts " +
         "refuse requests that come from there.");
     if (location.protocol !== "file:" && location.protocol !== "http:" && location.protocol !== "https:")
       causes.push("This page is running inside a sandbox that blocks outside images. Open the " +
         "site in a normal browser tab.");
-    causes.push("An ad blocker, privacy extension or network filter may be stopping it \u2014 " +
-      "try opening the link below in a normal tab.");
+    causes.push("An ad blocker, privacy extension or network filter may be stopping it. " +
+      "Try opening the link below in a normal tab.");
     if (fixed.note) causes.push(fixed.note);
     finish('<div class="warn" style="margin-top:8px"><strong>Did not load</strong> after ' +
       (Date.now() - started) + 'ms.<ul style="margin:6px 0 0 16px;padding:0">' +
@@ -1229,8 +1231,8 @@ function testPhotoUrl(raw) {
       'style="display:inline-block;margin-top:7px">Open the link in a tab</a></div>');
   };
   setTimeout(() => finish('<div class="warn" style="margin-top:8px"><strong>No answer after 12 seconds.</strong> ' +
-    'The host is slow, unreachable from this machine, or being blocked. ' +
-    'Adding the picture as a file avoids the problem entirely.</div>'), 12000);
+    'The host is slow, unreachable from this device, or being blocked. ' +
+    'Adding the photo as a file avoids the problem entirely.</div>'), 12000);
   img.src = fixed.url;
 }
 
@@ -1239,7 +1241,7 @@ function addLocalPhotos(files) {
   if (!list.length) { toast("Those weren\u2019t image files."); return; }
   F.photos = F.photos || [];
   let done = 0, failed = 0;
-  toast(list.length === 1 ? "Adding the picture\u2026" : "Adding " + list.length + " pictures\u2026");
+  toast(list.length === 1 ? "Adding the photo\u2026" : "Adding " + list.length + " photos\u2026");
   list.reduce((chain, file) => chain.then(() =>
     shrinkImage(file, 1600, 0.82)
       .then(dataUrl => {
@@ -1252,7 +1254,7 @@ function addLocalPhotos(files) {
       .catch(() => { failed++; })
   ), Promise.resolve()).then(() => {
     S.lastForm = F; save(); renderPhotoStrip();
-    if (done) toast(done + (done === 1 ? " picture added." : " pictures added.") +
+    if (done) toast(done + (done === 1 ? " photo added." : " photos added.") +
       (failed ? " " + failed + " could not be read." : ""));
     else toast("None of those could be added. IndexedDB may be blocked in this browser.");
   });
@@ -1351,11 +1353,11 @@ function renderResult() {
   $("#outList").textContent = r.zone.name + (r.zone.unique ? " · Estate" : "") + " · asking " + money(r.list) + (r.furnAdd ? " incl. furniture" : "");
 
   let flags = "";
-  if (r.auction) flags += '<div class="tip" style="margin-bottom:8px"><strong>Auction required</strong> — ' +
-    r.auctionWhy.join(", ") + '.</div>';
+  if (r.auction) flags += '<div class="tip" style="margin-bottom:8px"><strong>Auction required:</strong> ' +
+    esc(r.auctionWhy.join(", ")) + '.</div>';
   if (r.model === "modern" && r.specialUses.length)
-    flags += '<div class="tip" style="margin-bottom:8px"><strong>Special-use features</strong> — ' +
-      esc(r.specialUses.join(", ").toLowerCase()) + (r.specialPremium ? "." : "; recorded at a $0 premium.") + '</div>';
+    flags += '<div class="tip" style="margin-bottom:8px"><strong>Special-use features:</strong> ' +
+      esc(r.specialUses.map(lcPhrase).join(", ")) + (r.specialPremium ? "." : "; recorded at a $0 premium.") + '</div>';
   r.notes.forEach(n => { flags += '<div class="warn" style="margin-bottom:8px">' + esc(n) + '</div>'; });
   $("#outFlags").innerHTML = flags;
 
@@ -1403,7 +1405,7 @@ function renderResult() {
       rows.push('<tr><td>Zone bounds waived</td><td>' + money(r.residential) + '</td></tr>');
     if (r.specialPremium)
       rows.push('<tr><td>Special-use premium</td><td>+' + money(r.specialPremium) + '</td></tr>');
-    rows.push('<tr class="sum"><td>Modern appraised value</td><td>' + money(r.appraisal) + '</td></tr>');
+    rows.push('<tr class="sum"><td>Appraised value</td><td>' + money(r.appraisal) + '</td></tr>');
   }
   if (r.furnAdd) rows.push('<tr><td>Furniture at +' + r.furnPct + '%</td><td>' + money(r.furnAdd) + '</td></tr>');
   if (F.premiumPct) rows.push('<tr><td>Listing premium ' + F.premiumPct + '%</td><td>' +
@@ -1423,11 +1425,11 @@ function renderResult() {
       (outs.length ? ", and " + esc(outs.join(", ")) + " sit outside the root so they hit at full strength."
                    : ", all of them inside the root.") + "</p>");
   } else {
-    parts.push("<p><strong>Modern model.</strong> " + P.locationShare + "% of the " +
+    parts.push("<p><strong>How it's priced.</strong> " + P.locationShare + "% of the " +
       esc(z.name) + " base is location value and never moves. The other " + (100 - P.locationShare) +
       "% scales with square footage, " + Number(P.standardSqft || 2000).toLocaleString() +
       " sq ft being standard, and each extra stretch of space counts for less.</p>");
-    parts.push("<p style='margin-top:7px'>Features add a percentage of the base on top \u2014 in full " +
+    parts.push("<p style='margin-top:7px'>Features add a percentage of the base on top. They count in full " +
       "up to +" + P.featureFullTo + "%, then at " + P.featureTaper + "% beyond that" +
       (r.rawFeaturePct > P.featureFullTo
         ? ", which is why this one\u2019s +" + trim(r.rawFeaturePct) + "% counts as +" + trim(r.featurePct) + "%."
@@ -1440,7 +1442,7 @@ function renderResult() {
     let where;
     if (r.waived) {
       where = "<strong>The band is waived on this property</strong>" +
-        (F.boundsReason ? " \u2014 " + esc(F.boundsReason) : "") +
+        (F.boundsReason ? " (" + esc(F.boundsReason) + ")" : "") +
         ", so it prices at what the features actually come to.";
     } else if (z.ceiling && r.beforeBounds > z.ceiling) {
       where = "This one comes to " + money(r.beforeBounds) + ", over the ceiling, so only " +
@@ -1456,18 +1458,18 @@ function renderResult() {
       "counts, at " + P.boundGive + "%. " + where + "</p>");
     if (!r.waived)
       parts.push("<p class='note' style='margin-top:5px'>Waiving the band under Sale terms switches " +
-        "that off for one property, and records your reason on the appraisal. It is for a genuinely " +
-        "exceptional place \u2014 if you are reaching for it often, the zone\u2019s ceiling is set too low.</p>");
+        "that off for one property and records your reason on the appraisal. Save it for a truly " +
+        "exceptional place. If you\u2019re reaching for it often, the zone\u2019s ceiling is set too low.</p>");
   }
 
   if (r.model !== "legacy" && r.specialUses.length)
     parts.push("<p style='margin-top:7px'><strong>" + esc(r.specialUses.join(", ")) +
       "</strong> " + (r.specialUses.length === 1 ? "is" : "are") + " kept off the appraisal. " +
       "That is not what the house is worth, it is what one particular buyer will pay, so it is quoted " +
-      "separately" + (r.specialPremium ? " \u2014 " + money(r.specialPremium) + " here." : ". Set the amount under Sale terms.") + "</p>");
+      "separately" + (r.specialPremium ? ": " + money(r.specialPremium) + " here." : ". Set the amount under Sale terms.") + "</p>");
 
   if (r.auction)
-    parts.push("<p style='margin-top:7px'><strong>This one goes to auction</strong> \u2014 " +
+    parts.push("<p style='margin-top:7px'><strong>This one goes to auction:</strong> " +
       esc(r.auctionWhy.join(", ")) + ".</p>");
 
   parts.push("<p style='margin-top:7px'>You may list above the appraisal, never below it. " +
@@ -1475,7 +1477,7 @@ function renderResult() {
     (r.furnAdd ? " Furniture is charged at cost plus " + r.furnPct + "%." : "") + "</p>");
 
   parts.push("<p style='margin-top:7px'>The house rules suggest " + P.minDownPct +
-    "% down on a financed sale, though the terms are yours to set. Work them out under Payments.</p>");
+    "% down on a financed sale, though the terms are yours to set. Work them out under Financing.</p>");
 
   $("#outRules").innerHTML = parts.join("");
 }
@@ -1680,7 +1682,7 @@ function removeListing(id) {
 }
 function propertyModal(id) {
   const p = propById(id);
-  const clientOpts = '<option value="">— none —</option>' + S.clients.map(c =>
+  const clientOpts = '<option value="">None</option>' + S.clients.map(c =>
     '<option value="' + c.id + '"' + (p.clientId === c.id ? " selected" : "") + '>' + esc(c.name) + '</option>').join("");
   const statuses = ["Draft", "Listed", "Auction", "Under offer", "Sold", "Repossessed"];
   const m = openModal(p.address,
@@ -1778,7 +1780,7 @@ function renderClients() {
       const own = clientProperties(c.id);
       const worth = clientWorth(c.id);
       return '<tr><td><strong>' + esc(c.name) + '</strong>' +
-        (c.criminalGroup ? ' <span class="chip flag">criminal group</span>' : '') +
+        (c.criminalGroup ? ' <span class="chip flag">Criminal group</span>' : '') +
         (c.notes ? '<div class="note">' + esc(c.notes.slice(0, 60)) +
           (c.notes.length > 60 ? "\u2026" : "") + '</div>' : '') + '</td>' +
         '<td>' + esc(c.contact || c.birdy || "\u2014") + '</td>' +
@@ -1786,7 +1788,7 @@ function renderClients() {
         '<td>' + (own.length
           ? own.map(p => '<button class="btn sm linkish" data-clprop="' + p.id + '">' +
               esc(p.address) + '</button>').join(" ")
-          : '<span class="note">nothing yet</span>') + '</td>' +
+          : '<span class="note">Nothing yet</span>') + '</td>' +
         '<td class="num">' + (worth ? money(worth) : "\u2014") + '</td>' +
         '<td><button class="btn sm" data-cl="' + c.id + '">Open</button></td></tr>';
     }).join("") + '</tbody></table>';
@@ -1826,8 +1828,8 @@ function clientModal(id) {
           : '<p class="note">Nothing assigned yet.</p>') + '</div>' +
         (free.length
           ? '<div class="row" style="margin-top:9px">' +
-            '<select id="c_addprop" style="flex:1"><option value="">\u2014 assign a property \u2014</option>' +
-            free.map(p => '<option value="' + p.id + '">' + esc(p.address) + " \u2014 " +
+            '<select id="c_addprop" style="flex:1"><option value="">Assign a property\u2026</option>' +
+            free.map(p => '<option value="' + p.id + '">' + esc(p.address) + " \u00b7 " +
               money(p.list) + '</option>').join("") + '</select>' +
             '<button class="btn sm" id="c_addbtn">Assign</button></div>'
           : '<p class="note" style="margin-top:8px">Every saved property already has someone against it.</p>') +
@@ -1898,8 +1900,8 @@ function renderWarehouses() {
       '<div class="stat"><div class="n">' + P.agentCommissionPct + '%</div><div class="l">Your commission</div></div>' +
     '</div>' +
     '<p class="note">A warehouse is priced flat, by size. The interior is the same interior wherever ' +
-    'the door goes, so zones and multipliers do not apply \u2014 what a buyer pays is what is on this ' +
-    'list. Price is the only thing set here; how much one holds and how many a player may own come ' +
+    'the door goes, so zones and multipliers don\u2019t apply. What a buyer pays is what\u2019s on this ' +
+    'list. Only the price is set here. How much one holds and how many a player can own come ' +
     'from the server.</p>';
 
   $("#whTable").innerHTML = '<div class="whgrid">' + list.map(w => {
@@ -1939,7 +1941,7 @@ function renderWarehouses() {
   });
 
   $("#whCalc").innerHTML = list.map(w =>
-    '<option value="' + esc(w.id) + '">' + esc(w.label) + " \u2014 " + money(w.price) + '</option>').join("");
+    '<option value="' + esc(w.id) + '">' + esc(w.label) + " \u00b7 " + money(w.price) + '</option>').join("");
   whCommission();
 
   const WH_TERMS = [
@@ -1947,8 +1949,8 @@ function renderWarehouses() {
   ];
   $("#whTerms").innerHTML =
     '<p class="note" style="margin-bottom:10px">What a sale pays out. Everything else about a ' +
-    'warehouse \u2014 how much it holds, how many a player may own, what they get back for selling ' +
-    'one \u2014 is set on the server, not here.</p>' +
+    'warehouse, like how much it holds, how many a player can own and what they get back for selling ' +
+    'one, is set on the server.</p>' +
     WH_TERMS.map(f =>
       '<div class="field"><label for="w_' + f[0] + '">' + f[1] + '</label>' +
       '<input id="w_' + f[0] + '" data-wt="' + f[0] + '" type="number" value="' + P[f[0]] + '"></div>').join("");
@@ -2066,8 +2068,8 @@ $$("[data-lnpreset]").forEach(b => b.onclick = () => {
 });
 
 function renderLoans() {
-  $("#lnProp").innerHTML = '<option value="">\u2014 enter a price by hand \u2014</option>' +
-    S.properties.map(p => '<option value="' + p.id + '">' + esc(p.address) + " \u2014 " +
+  $("#lnProp").innerHTML = '<option value="">Enter a price by hand</option>' +
+    S.properties.map(p => '<option value="' + p.id + '">' + esc(p.address) + " \u00b7 " +
       money(p.soldFor || p.list) + '</option>').join("");
   loanCheck();
 }
@@ -2086,7 +2088,7 @@ const POLICY_FIELDS = [
   ["auctionsEnabled", "Auctions are used on this server", "bool"],
   ["uniqueForcesAuction", "Estates must go to auction", "bool"],
   ["financingEnabled", "Financing is offered to buyers", "bool"],
-  ["minDownPct", "Suggested downpayment (%)"],
+  ["minDownPct", "Suggested down payment (%)"],
   ["evictionWarnDays", "Eviction warning (days)"],
   ["furnitureMinPct", "Furniture uplift, lowest (%)"],
   ["furnitureMaxPct", "Furniture uplift, highest (%)"]
@@ -2103,18 +2105,18 @@ function modSummary(m) {
 }
 function modSummaryModern(m) {
   const pc = n => (n > 0 ? "+" : "") + trim(n) + "%";
-  if (m.id === "rooms") return "structure, " + (100 - S.rules.policy.locationShare) + "% of base";
+  if (m.id === "rooms") return "Structure, " + (100 - S.rules.policy.locationShare) + "% of base";
   if (m.penaltyPct) return "\u2212" + trim(m.penaltyPct) + "%";
-  if (isSpecialUse(m)) return "premium line";
+  if (isSpecialUse(m)) return "Quoted separately";
   if (m.kind === "choice") {
     const parts = (m.options || []).filter(o => +o.pct).map(o => o.label + " " + pc(+o.pct));
-    return parts.length ? parts.join(", ") : "no effect";
+    return parts.length ? parts.join(", ") : "No effect";
   }
   if (isFlatFeature(m)) {
     const f = +m.flat || 0, fx = +m.flatExtra || 0;
     return money(f) + (fx ? ", then " + money(fx) : "") + " fixed";
   }
-  if (!+m.pct && !+m.pctExtra) return "no effect";
+  if (!+m.pct && !+m.pctExtra) return "No effect";
   if (m.kind === "count" || m.kind === "tiered")
     return pc(+m.pct || 0) + (+m.pctExtra ? ", then " + pc(+m.pctExtra) : "");
   return pc(+m.pct || 0);
@@ -2122,11 +2124,11 @@ function modSummaryModern(m) {
 
 function modernCell(m) {
   if (m.id === "rooms")
-    return '<span class="note">' + esc(modSummaryModern(m)) + '<br>set on the House rules panel</span>';
+    return '<span class="note">' + esc(modSummaryModern(m)) + '<br>Set on the House rules panel</span>';
   if (m.penaltyPct != null)
     return '<div class="minipair"><input data-pp="' + m.id + '" type="number" step="1" value="' +
       m.penaltyPct + '" title="Takes this % off"></div>';
-  if (isSpecialUse(m)) return '<span class="note">premium line</span>';
+  if (isSpecialUse(m)) return '<span class="note">Quoted separately</span>';
   if (m.kind === "choice" || m.kind === "free")
     return '<span class="note">' + esc(modSummaryModern(m)) + '</span>';
   const flat = isFlatFeature(m);
@@ -2160,7 +2162,7 @@ function renderRules() {
         '</div><div class="l">Ordinary market</div></div>' +
     '</div>' +
     '<p class="note"><strong>How an appraisal is built.</strong> It starts from the zone base. ' + P.locationShare +
-    '% of it is location and never moves; the rest scales with square footage, ' +
+    '% of it is location and never moves. The rest scales with square footage, ' +
     Number(P.standardSqft || 2000).toLocaleString() + ' sq ft being a standard home. ' +
     'Features add a percentage of base on top, counting in full to +' + P.featureFullTo +
     '% and at ' + P.featureTaper + '% beyond that. Disclosures take value off, never more than ' +
@@ -2196,7 +2198,7 @@ function renderRules() {
           '<td style="white-space:nowrap"><button class="btn sm" data-zmap="' + z.id + '">Map</button> ' +
           '<button class="btn sm danger icon" data-delzone="' + z.id + '" title="Delete zone" ' +
           'aria-label="Delete zone">' + ICON_TRASH + '</button></td></tr>' +
-          (bad ? '<tr class="rowbadnote"><td colspan="8" class="note">Floor is above the ceiling \u2014 ' +
+          (bad ? '<tr class="rowbadnote"><td colspan="8" class="note">Floor is above the ceiling. ' +
             'the ceiling is ignored until this is fixed.</td></tr>' : '');
       }).join("") + '</tbody></table>' +
       '<p class="note" style="margin-top:8px">Zones, prices and map positions are set by the HUG Regional Director ' +
@@ -2240,9 +2242,9 @@ function renderRules() {
           '<button class="btn sm icon" data-down="' + m.id + '" title="Move down" aria-label="Move down"' +
             (i === mods.length - 1 ? " disabled" : "") + '>' + ICON_DOWN + '</button></td>' +
         '<td><strong>' + esc(m.label) + '</strong>' +
-          (m.requires ? '<div class="note">needs ' + esc((modById(m.requires) || {}).label || m.requires) + '</div>' : '') +
+          (m.requires ? '<div class="note">Needs ' + esc((modById(m.requires) || {}).label || m.requires) + '</div>' : '') +
           (m.forcesAuction && S.rules.policy.auctionsEnabled
-            ? '<div class="note">forces an auction</div>' : '') + '</td>' +
+            ? '<div class="note">Forces an auction</div>' : '') + '</td>' +
         '<td class="note">' + esc(KIND_LABEL[m.kind] || m.kind) + '</td>' +
         '<td>' + modernCell(m) + '</td>' +
         '<td class="note">' + esc(m.group || "\u2014") + '</td>' +
@@ -2362,7 +2364,7 @@ function modModal(id) {
       '<div><span class="lab">Form section</span><select id="d_group">' +
         groups.map(g => '<option' + (m.group === g ? " selected" : "") + '>' + esc(g) + '</option>').join("") + '</select></div>' +
       '<div><span class="lab">Only counts with</span><select id="d_req">' +
-        '<option value="">— nothing —</option>' + others.map(o =>
+        '<option value="">Nothing</option>' + others.map(o =>
           '<option value="' + o.id + '"' + (m.requires === o.id ? " selected" : "") + '>' + esc(o.label) + '</option>').join("") +
       '</select></div></div>' +
     '<div style="margin-bottom:10px"><span class="lab">Note on the form (optional)</span>' +
@@ -2440,7 +2442,7 @@ function modModal(id) {
           (flatMode ? (m.flatExtra == null ? 0 : m.flatExtra) : (m.pctExtra == null ? 0 : m.pctExtra)) +
           '"></div>' : "") +
       '</div><p class="note" style="margin-top:5px">A share of the price suits anything about land ' +
-      'or the building itself. A fixed amount suits things with a cost of their own \u2014 a shed is ' +
+      'or the building itself. A fixed amount suits things with a cost of their own, since a shed is ' +
       'a shed wherever it stands. Negative numbers take value off.</p></div>';
   };
   const drawValues = () => {
@@ -2448,8 +2450,8 @@ function modModal(id) {
     const box = $("#d_values", mm);
     if (kind === "choice") {
       const opts = (m.kind === "choice" && m.options) ? m.options : [{ label: "None", value: 1 }, { label: "Yes", value: 1.2 }];
-      box.innerHTML = '<span class="lab">Options — label and % of the zone base it adds. ' +
-        'The first should usually be a 0% "None".</span>' +
+      box.innerHTML = '<span class="lab">Options: a label and the % of the zone base it adds. ' +
+        'The first is usually "None" at 0%.</span>' +
         '<div id="d_opts">' + opts.map(o =>
           '<div class="row optrow" style="gap:6px;margin-bottom:5px">' +
           '<input class="ol" value="' + esc(o.label) + '" placeholder="Label">' +
@@ -2549,13 +2551,13 @@ function renderData() {
   const since = S.lastExport ? Math.floor((Date.now() - S.lastExport) / 86400000) : null;
   $("#storageInfo").innerHTML =
     (Store.ok ? '<div class="ok">Saving normally. ' + kb + ' KB used.</div>'
-              : '<div class="warn">This browser is not saving. Private browsing or strict privacy settings can cause this \u2014 export a backup before closing.</div>') +
+              : '<div class="warn">This browser is not saving. Private browsing or strict privacy settings can cause this. Export a backup before closing.</div>') +
     '<div class="note" style="margin-top:8px">' + S.properties.length + " properties \u00b7 " +
-    S.clients.length + " clients \u00b7 <span id='photoCount'>counting pictures\u2026</span></div>" +
+    S.clients.length + " clients \u00b7 <span id='photoCount'>counting photos\u2026</span></div>" +
     '<div class="meter" title="' + pct + '% of the browser\u2019s text storage"><i style="width:' +
     Math.max(2, pct) + '%"></i></div>' +
     '<div class="note">' + kb + ' KB of records, about ' + pct + '% of what this browser allows. ' +
-    'Pictures are stored separately and do not count toward it.</div>' +
+    'Photos are stored separately and don\u2019t count toward it.</div>' +
     (since === null
       ? '<div class="tip" style="margin-top:9px">You have never exported a backup.</div>'
       : since >= 7
@@ -2564,13 +2566,13 @@ function renderData() {
           (since === 0 ? "today" : since === 1 ? "yesterday" : since + " days ago") + '.</div>');
   PhotoStore.keys().then(k => {
     const el = $("#photoCount");
-    if (el) el.textContent = k.length + (k.length === 1 ? " picture" : " pictures");
-  }).catch(() => { const el = $("#photoCount"); if (el) el.textContent = "pictures unavailable"; });
+    if (el) el.textContent = k.length + (k.length === 1 ? " photo" : " photos");
+  }).catch(() => { const el = $("#photoCount"); if (el) el.textContent = "photos unavailable"; });
   $("#packInfo").innerHTML = S.packVersion
     ? '<div class="ok">Running rules pack v' + S.packVersion +
       (S.packIssued ? ", issued " + esc(S.packIssued) : "") + '.' +
       (S.packNote ? '<div class="note" style="margin-top:4px">' + esc(S.packNote) + '</div>' : '') + '</div>'
-    : '<div class="note">No rules pack applied — these are your own zones and rules.</div>';
+    : '<div class="note">No rules pack applied. These are your own zones and rules.</div>';
 }
 
 $("#btnExport").onclick = () => {
@@ -2586,7 +2588,7 @@ function exportBackup(photos) {
   S.lastExport = Date.now(); save();
   renderData();
   const n = Object.keys(photos || {}).length;
-  toast("Backup downloaded" + (n ? " with " + n + (n === 1 ? " picture." : " pictures.") : "."));
+  toast("Backup downloaded" + (n ? " with " + n + (n === 1 ? " photo." : " photos.") : "."));
 }
 $("#btnLoad").onclick = () => $("#loadFile").click();
 $("#loadFile").onchange = e => {
@@ -2598,7 +2600,7 @@ $("#loadFile").onchange = e => {
 /* One loader for everything. Works out what the file is and sends it
    where it belongs rather than making you pick the right button. */
 function routeFile(file) {
-  if (file.type && file.type.indexOf("image/") === 0) { toast("Pictures go on a property. Drop backups and rules files here."); return; }
+  if (file.type && file.type.indexOf("image/") === 0) { toast("Photos go on a property. Only backups and rules files can be dropped here."); return; }
   const rd = new FileReader();
   rd.onload = () => {
     const text = String(rd.result || "");
@@ -2623,9 +2625,9 @@ function applyBackupFile(incoming) {
   openModal("Restore a backup",
     '<p>This backup holds ' + (incoming.properties || []).length + ' properties, ' +
     (incoming.clients || []).length + ' clients and ' +
-    Object.keys(incoming.photoBlobs || {}).length + ' pictures' +
+    Object.keys(incoming.photoBlobs || {}).length + ' photos' +
     (v < SCHEMA ? ', saved in format v' + v + ' and will be converted' : '') + '.</p>' +
-    '<p class="warn" style="margin-top:10px">Restoring replaces everything currently on this machine.</p>',
+    '<p class="warn" style="margin-top:10px">Restoring replaces everything currently on this device.</p>',
     [{ label: "Cancel", run: closeModal },
      { label: "Replace my data", kind: "primary", run: () => {
         const blobs = incoming.photoBlobs || {};
@@ -2637,7 +2639,7 @@ function applyBackupFile(incoming) {
         const keys = Object.keys(blobs);
         Promise.all(keys.map(k => PhotoStore.put(k, blobs[k]).catch(() => {})))
           .then(() => { closeModal(); renderAll();
-            toast("Backup restored" + (keys.length ? " with " + keys.length + " pictures." : "."));
+            toast("Backup restored" + (keys.length ? " with " + keys.length + " photos." : "."));
           });
       } }]);
 }
@@ -2661,7 +2663,7 @@ window.addEventListener("drop", e => {
 
 $("#btnWipe").onclick = () => {
   openModal("Erase all data",
-    '<p>Every property, client and loan on this machine will be removed, and zones and rules go back to defaults.</p>' +
+    '<p>Every property, client and loan on this device will be removed, and zones and rules go back to defaults.</p>' +
     '<p class="warn" style="margin-top:10px">There is no undo. Export a backup first if you might want any of it.</p>',
     [{ label: "Cancel", run: closeModal },
      { label: "Erase everything", kind: "danger", run: () => {
@@ -2717,7 +2719,7 @@ function applyPackFile(pk) {
        mine[z.id].ceiling !== z.ceiling || mine[z.id].name !== z.name)).length;
     const m = openModal("Apply rules pack v" + (pk.version || "?"),
       (pk.note ? '<div class="tip" style="margin-bottom:10px">' + esc(pk.note) + '</div>' : '') +
-      '<p>' + zoneCount + ' zones in this pack — <strong>' + added + '</strong> new to you, <strong>' +
+      '<p>' + zoneCount + ' zones in this pack: <strong>' + added + '</strong> new to you, <strong>' +
       changed + '</strong> with a different name or price.</p>' +
       '<p class="note" style="margin-top:9px">Issued ' + esc(pk.issued || "unknown") +
       '. Your properties, clients and loans are not touched.</p>' +
@@ -2892,7 +2894,7 @@ function drawPins() {
         const radius = group.length === 1 ? 0 : 15 + Math.floor(i / 8) * 13;
         makePin("prop", z.x + Math.cos(angle) * radius, z.y + Math.sin(angle) * radius - 20,
           statusColor(p.status), p.address + " \u00b7 " + money(p.list),
-          p.address + " \u2014 " + p.status, () => propertyModal(p.id));
+          p.address + " \u00b7 " + p.status, () => propertyModal(p.id));
       });
     });
   }
@@ -2909,7 +2911,7 @@ function drawPins() {
     const el = makePin("zone" + (String(selectedZone) === String(z.id) ? " sel" : "") +
       (z.unique && mode !== "listings" ? " estate" : "") +
       (mode === "listings" ? " muted" : ""), z.x, z.y, colour, label,
-      z.name + " \u2014 " + money(z.base) +
+      z.name + " \u00b7 " + money(z.base) +
         (st.count ? " \u00b7 " + st.count + (st.count === 1 ? " property" : " properties") : ""),
       () => selectZone(z.id));
     if (editorOn && (editorTool === "move" || String(movingZone) === String(z.id))) {
@@ -3139,8 +3141,8 @@ $$("#mapMode button").forEach(b => b.onclick = () => {
 function renderLegend() {
   const m = S.ui.mode;
   if (m === "listings") {
-    $("#mapLegend").innerHTML = '<i style="background:#23824f"></i>listed <i style="background:#c79a12;margin-left:7px"></i>auction ' +
-      '<i style="background:#0a1f44;margin-left:7px"></i>sold';
+    $("#mapLegend").innerHTML = '<i style="background:#23824f"></i>Listed <i style="background:#c79a12;margin-left:7px"></i>Auction ' +
+      '<i style="background:#0a1f44;margin-left:7px"></i>Sold';
     return;
   }
   const bases = S.zones.map(z => +z.base || 0).filter(Boolean);
@@ -3149,7 +3151,7 @@ function renderLegend() {
   $("#mapLegend").innerHTML =
     '<div class="pricescale" style="background:linear-gradient(90deg,' + stops + ')"></div>' +
     '<div class="pricescale-ends"><span>' + money(lo) + '</span><span>Cheaper \u2192 pricier</span><span>' + money(hi) + '</span></div>' +
-    '<div style="margin-top:5px"><i class="estate-key"></i>estate</div>';
+    '<div style="margin-top:5px"><i class="estate-key"></i>Estate</div>';
 }
 
 /* ============================================================
@@ -3186,8 +3188,8 @@ function zoneModal(id, draft) {
       '<div><span class="lab">Zone number</span><input id="z_id" type="number" value="' + z.id + '"' + (id ? " disabled" : "") + '></div>' +
       '<div><span class="lab">Base price ($)</span><input id="z_base" type="number" value="' + z.base + '"></div></div>' +
     '<div class="grid2" style="margin-bottom:10px">' +
-      '<div><span class="lab">Modern floor ($)</span><input id="z_floor" type="number" min="0" value="' + (+z.floor || 0) + '"></div>' +
-      '<div><span class="lab">Modern ceiling ($)</span><input id="z_ceiling" type="number" min="0" value="' + (+z.ceiling || 0) + '"></div></div>' +
+      '<div><span class="lab">Floor ($)</span><input id="z_floor" type="number" min="0" value="' + (+z.floor || 0) + '"></div>' +
+      '<div><span class="lab">Ceiling ($)</span><input id="z_ceiling" type="number" min="0" value="' + (+z.ceiling || 0) + '"></div></div>' +
     '<div style="margin-bottom:10px"><span class="lab">Name</span><input id="z_name" value="' + esc(z.name) + '" placeholder="e.g. Palomino Highlands"></div>' +
     '<label class="row" style="gap:6px"><input type="checkbox" id="z_uniq"' + (z.unique ? " checked" : "") +
       '> Estate</label>' +
@@ -3291,6 +3293,6 @@ refreshZoneList();
 renderAll();
 if (MODE === "agency") lockAgencyControls();
 if (typeof packApplied !== "undefined" && packApplied)
-  toast("House rules updated \u2014 " + packApplied + ".");
+  toast("House rules updated: " + packApplied + ".");
 if (!Store.ok) toast("This browser is not saving data. Private browsing can cause this.");
 if (MODE === "agency") loadPublishedRules();
