@@ -1,8 +1,8 @@
 {
   "kind": "dynasty8-office-pack",
-  "version": 6,
+  "version": 7,
   "issued": "2026-11-24",
-  "note": "Fixes",
+  "note": "Wording cleanup on the appraisal form",
   "schema": 9,
   "zones": [
     {
@@ -380,7 +380,7 @@
         "kind": "count",
         "value": 1.1,
         "pct": 0,
-        "hint": "Rooms only — hallways don't count."
+        "hint": "Rooms only \u2014 hallways don't count."
       },
       {
         "id": "pools",
@@ -556,7 +556,6 @@
         "kind": "choice",
         "value": 1,
         "outside": true,
-        "hint": "Exempt from the square root in legacy",
         "options": [
           {
             "label": "None",
@@ -584,7 +583,7 @@
         "value2": 5,
         "pct": 8,
         "forcesAuction": true,
-        "hint": "Legacy uses the multiplier you type; modern adds a flat percentage per feature."
+        "hint": "Describe it and say how many."
       },
       {
         "id": "torture",

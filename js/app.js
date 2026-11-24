@@ -131,12 +131,12 @@ function legacyMods() {
     { id: "mlo",         label: "Custom interior (MLO)",       group: "Grounds and features", kind: "toggle", value: 1.6, pct: 10,
       forcesAuction: true },
     { id: "storage",     label: "Storage or warehouse",        group: "Grounds and features", kind: "choice", value: 1,
-      outside: true, hint: "Exempt from the square root in legacy",
+      outside: true,
       options: [{ label: "None", value: 1, pct: 0 }, { label: "Standard", value: 1.6, pct: 12 },
                 { label: "Large", value: 2.4, pct: 22 }] },
     { id: "exotic",      label: "Exotic or unique feature",    group: "Grounds and features", kind: "free", value: 1.2,
       value2: 5, pct: 8, forcesAuction: true,
-      hint: "Legacy uses the multiplier you type; modern adds a flat percentage per feature." },
+      hint: "Describe it and say how many." },
 
     { id: "torture",     label: "Hidden torture room",         group: "Disclosures and hazards", kind: "choice", value: 1,
       special: true,
@@ -766,8 +766,9 @@ function listingCopy(f, r) {
   (S.rules.mods || []).forEach(m => {
     if (m.group === "Disclosures and hazards") return;
     if (m.requires && !(f.mods || {})[m.requires]) return;
-    const v = modValue(m, (f.mods || {})[m.id]);
-    if (v) feats.push(v.label.toLowerCase());
+    if (m.id === "rooms" || isSpecialUse(m)) return;
+    const d = describeMod(m, (f.mods || {})[m.id]);
+    if (d) feats.push(d.toLowerCase());
   });
   const L = [];
   L.push("DYNASTY 8 — " + (f.address || "New listing"));
@@ -831,10 +832,9 @@ function modField(m) {
     const e = v || {};
     return '<div style="padding:6px 0;border-bottom:1px solid #e9edf2">' +
       '<span class="lab">' + esc(m.label) + '</span>' +
-      '<input data-m="' + m.id + '" data-sub="note" value="' + esc(e.note || "") + '" placeholder="What is it? e.g. private helipad" style="margin-bottom:6px">' +
       '<div class="grid2">' +
-        '<div><span class="lab">Multiplier (' + trim(m.value) + "–" + trim(m.value2) + '×)</span>' +
-        '<input data-m="' + m.id + '" data-sub="mult" type="number" step="0.1" min="0" value="' + (+e.mult || 0) + '"></div>' +
+        '<div><span class="lab">What is it?</span>' +
+        '<input data-m="' + m.id + '" data-sub="note" value="' + esc(e.note || "") + '" placeholder="e.g. private helipad"></div>' +
         '<div><span class="lab">How many</span>' +
         '<input data-m="' + m.id + '" data-sub="count" type="number" min="0" value="' + (+e.count || 0) + '"></div>' +
       '</div></div>';
@@ -854,6 +854,15 @@ function setSectionOpen(name, open) {
   save();
 }
 
+/* What an agent set, in plain words: "2 pools", "Rear garden: Large", "private helipad". */
+function describeMod(m, entry) {
+  const n = entryCount(m, entry);
+  if (!n) return null;
+  if (m.kind === "count" || m.kind === "tiered") return n + " " + m.label.toLowerCase();
+  if (m.kind === "choice") return m.label + ": " + entry;
+  if (m.kind === "free") return ((entry || {}).note || m.label) + (n > 1 ? " \u00d7" + n : "");
+  return m.label;
+}
 /* A short line describing what is set in a section, so a closed one still tells
    you whether there is anything in it. */
 function sectionSummary(inGroup) {
@@ -861,12 +870,8 @@ function sectionSummary(inGroup) {
   inGroup.forEach(m => {
     const v = (F.mods || {})[m.id];
     if (m.requires && !(F.mods || {})[m.requires]) return;
-    const r = modValue(m, v);
-    if (!r) return;
-    bits.push(m.kind === "count" || m.kind === "tiered"
-      ? (+v) + " " + m.label.toLowerCase()
-      : m.kind === "choice" ? v + " " + m.label.toLowerCase()
-      : m.label.toLowerCase());
+    const d = describeMod(m, v);
+    if (d) bits.push(d.toLowerCase());
   });
   return bits;
 }
@@ -1521,11 +1526,14 @@ function renderPortfolio() {
         '<td>' + esc(c ? c.name : "\u2014") + '</td>' +
         '<td style="white-space:nowrap"><button class="btn sm" data-open="' + p.id + '">Open</button> ' +
         '<button class="btn sm" data-load="' + p.id + '">Re-appraise</button> ' +
-        '<button class="btn sm" data-dupe="' + p.id + '" title="Duplicate">Copy</button></td></tr>';
+        '<button class="btn sm" data-dupe="' + p.id + '" title="Duplicate">Copy</button> ' +
+        '<button class="btn sm danger icon-btn" data-delprop="' + p.id + '" aria-label="Remove ' + esc(p.address) + '">' +
+        ICON_TRASH + '<span>Remove</span></button></td></tr>';
     }).join("") + '</tbody></table>';
 
   hydrateLocalPhotos($("#pfTable"));
   $$("#pfTable [data-open]").forEach(b => b.onclick = () => propertyModal(b.dataset.open));
+  $$("#pfTable [data-delprop]").forEach(b => b.onclick = () => removeListing(b.dataset.delprop));
   $$("#pfTable [data-load]").forEach(b => b.onclick = () => {
     const p = propById(b.dataset.load);
     F = Object.assign(blankForm(), clone(p.form)); F.mods = F.mods || {}; editingPropId = p.id;
@@ -1576,6 +1584,20 @@ function refreshAllModal(drifted) {
       } }]);
 }
 
+function removeListing(id) {
+  const p = propById(id);
+  if (!p) return;
+  openModal("Remove listing",
+    '<p>Remove <strong>' + esc(p.address) + '</strong> from your listings?</p>' +
+    '<p class="note" style="margin-top:8px">This can\u2019t be undone.</p>',
+    [{ label: "Keep it", run: closeModal },
+     { label: ICON_TRASH + " Remove", kind: "danger icon-btn", run: () => {
+        (((p.form || {}).photos) || []).forEach(ph => { if (ph && ph.kind === "local") PhotoStore.del(ph.key).catch(() => {}); });
+        S.properties = S.properties.filter(x => x.id !== id);
+        if (editingPropId === id) editingPropId = null;
+        save(); closeModal(); renderAll(); toast("Listing removed.");
+      } }]);
+}
 function propertyModal(id) {
   const p = propById(id);
   const clientOpts = '<option value="">— none —</option>' + S.clients.map(c =>
@@ -1599,10 +1621,7 @@ function propertyModal(id) {
     '<div class="note">Appraised at ' + money(p.appraisal) + ' in ' + esc((zoneById(p.zone) || {}).name || "\u2014") +
     '. Saved ' + when(p.created) + '.</div>',
     [
-      { label: ICON_TRASH + " Delete", kind: "danger icon-btn", run: () => {
-          if (!confirm("Delete " + p.address + "?")) return;
-          S.properties = S.properties.filter(x => x.id !== id); save(); closeModal(); renderAll(); toast("Property deleted.");
-        } },
+      { label: ICON_TRASH + " Remove", kind: "danger icon-btn", run: () => removeListing(id) },
       { label: "Cancel", run: closeModal },
       { label: "Save changes", kind: "primary", run: () => {
           p.status = $("#m_status", m).value;
@@ -1992,8 +2011,8 @@ const POLICY_FIELDS = [
   ["furnitureMinPct", "Furniture uplift, lowest (%)"],
   ["furnitureMaxPct", "Furniture uplift, highest (%)"]
 ];
-const KIND_LABEL = { toggle: "Yes or no", count: "Counted, compounding",
-  tiered: "First one, then each after", choice: "Pick from a list", free: "Agent sets it" };
+const KIND_LABEL = { toggle: "Yes or no", count: "Counted",
+  tiered: "First one, then each after", choice: "Pick from a list", free: "Agent describes it" };
 
 function modSummary(m) {
   if (m.kind === "tiered") return "first \u00d7" + trim(m.value) + ", then \u00d7" + trim(m.value2);
@@ -2021,18 +2040,6 @@ function modSummaryModern(m) {
   return pc(+m.pct || 0);
 }
 
-/* Both models are editable side by side. The appraisal model is chosen per
-   property, so the Rules tab can't follow "the current one" — it shows both. */
-function legacyCell(m) {
-  if (m.kind === "choice" || m.kind === "free")
-    return '<span class="note">' + esc(modSummary(m)) + '</span>';
-  const second = m.kind === "tiered"
-    ? '<input data-lv2="' + m.id + '" type="number" step="0.05" value="' + m.value2 +
-      '" title="Each after the first">' : "";
-  return '<div class="minipair">' +
-    '<input data-lv="' + m.id + '" type="number" step="0.05" value="' + m.value + '" title="Multiplier">' +
-    second + '</div>';
-}
 function modernCell(m) {
   if (m.id === "rooms")
     return '<span class="note">' + esc(modSummaryModern(m)) + '<br>set on the House rules panel</span>';
