@@ -2155,26 +2155,71 @@ function modSummaryModern(m) {
   return pc(+m.pct || 0);
 }
 
+/* ---- plain-English effect of a multiplier ---- */
+function typicalBase() {
+  const b = S.zones.filter(z => !z.unique).map(z => +z.base || 0).filter(Boolean).sort((x, y) => x - y);
+  return b.length ? b[Math.floor(b.length / 2)] : 200000;
+}
+function effectOf(m) {
+  const P = S.rules.policy, B = typicalBase();
+  const pc = n => trim(Math.abs(n)) + "%";
+  const ex = (amt, what) => amt ? "On a typical " + money(B) + " home" + (what ? " (" + what + ")" : "") + ": " +
+    (amt > 0 ? "+" : "\u2212") + money(Math.abs(amt)) : "";
+  if (m.id === "rooms") return { text: "Size comes from square footage; rooms only nudge it. Set on the House rules panel.", ex: "" };
+  if (isSpecialUse(m)) return { text: "Not priced by the formula. The agent records a premium for it on the appraisal.", ex: "" };
+  if (penaltyPctOf(m)) return { text: "Takes " + pc(m.penaltyPct) + " off the whole price. All problems together take off at most " +
+      trim(P.maxDepreciationPct) + "%.", ex: ex(-B * m.penaltyPct / 100) };
+  if (m.kind === "choice") {
+    const parts = (m.options || []).filter(o => +o.pct || +o.flat).map(o =>
+      o.label + (+o.flat ? (o.flat > 0 ? " adds " : " takes off ") + money(Math.abs(o.flat))
+                         : (o.pct > 0 ? " adds " : " takes off ") + pc(o.pct) + " of the zone price"));
+    const top = (m.options || []).reduce((a, o) => (+o.pct > (+a.pct || 0) ? o : a), {});
+    return { text: parts.length ? parts.join("; ") + "." : "No effect on the price.",
+      ex: +top.pct ? ex(B * top.pct / 100, top.label) : "" };
+  }
+  const many = m.kind === "count" || m.kind === "tiered";
+  if (isFlatFeature(m)) {
+    const f = +m.flat || 0, fx = +m.flatExtra || 0;
+    if (!f && !fx) return { text: "No effect on the price.", ex: "" };
+    return { text: many ? "The first adds " + money(f) + (fx ? "; each one after adds " + money(fx) : "; more don\u2019t add anything") + "."
+                        : "Adds " + money(f) + ", whatever the zone.", ex: "" };
+  }
+  const a = +m.pct || 0, b = +m.pctExtra || 0;
+  if (!a && !b) return { text: "No effect on the price.", ex: "" };
+  if (m.kind === "free") return { text: "Each one adds " + pc(a) + " of the zone price.", ex: ex(B * a / 100, "one") };
+  return { text: many ? "The first " + (a < 0 ? "takes off " : "adds ") + pc(a) + " of the zone price" +
+                        (b ? "; each one after adds " + pc(b) : "; more don\u2019t add anything") + "."
+                      : (a < 0 ? "Takes off " : "Adds ") + pc(a) + " of the zone price.",
+           ex: ex(B * a / 100, many ? "the first one" : "") };
+}
+function effectHTML(m) {
+  const e = effectOf(m);
+  return '<div class="effect">' + esc(e.text) + '</div>' + (e.ex ? '<div class="note">' + esc(e.ex) + '</div>' : '');
+}
+const unitBox = (input, unit, before) => '<label class="unit">' + (before ? '<span>' + before + '</span>' : '') + input +
+  (unit ? '<span>' + unit + '</span>' : '') + '</label>';
+
 function modernCell(m) {
-  if (m.id === "rooms")
-    return '<span class="note">' + esc(modSummaryModern(m)) + '<br>Set on the House rules panel</span>';
+  if (m.id === "rooms" || isSpecialUse(m)) return effectHTML(m);
   if (m.penaltyPct != null)
-    return '<div class="minipair"><input data-pp="' + m.id + '" type="number" step="1" value="' +
-      m.penaltyPct + '" title="Takes this % off"></div>';
-  if (isSpecialUse(m)) return '<span class="note">Quoted separately</span>';
-  if (m.kind === "choice" || m.kind === "free")
-    return '<span class="note">' + esc(modSummaryModern(m)) + '</span>';
+    return '<div class="minipair">' + unitBox('<input data-pp="' + m.id + '" type="number" step="1" min="0" value="' +
+      m.penaltyPct + '" aria-label="' + esc(m.label) + ': % taken off">', "% off") + '</div>' + effectHTML(m);
+  if (m.kind === "choice") return effectHTML(m) + '<div class="note">Change the options with Edit.</div>';
+  if (m.kind === "free")
+    return '<div class="minipair">' + unitBox('<input data-pv="' + m.id + '" type="number" step="1" value="' + (+m.pct || 0) +
+      '" aria-label="' + esc(m.label) + ': % each">', "% each") + '</div>' + effectHTML(m);
   const flat = isFlatFeature(m);
   const many = m.kind === "count" || m.kind === "tiered";
   const second = many
-    ? '<input data-' + (flat ? "fx" : "px") + '="' + m.id + '" type="number" step="' +
+    ? unitBox('<input data-' + (flat ? "fx" : "px") + '="' + m.id + '" type="number" step="' +
       (flat ? "500" : "1") + '" value="' + (flat ? (m.flatExtra == null ? 0 : m.flatExtra)
-        : (m.pctExtra == null ? 0 : m.pctExtra)) + '" title="Each after the first">' : "";
+        : (m.pctExtra == null ? 0 : m.pctExtra)) + '" aria-label="' + esc(m.label) + ': each after the first">',
+      flat ? "each after" : "% each after", flat ? "$" : "") : "";
   return '<div class="minipair' + (flat ? " flatpair" : "") + '">' +
-    '<input data-' + (flat ? "fv" : "pv") + '="' + m.id + '" type="number" step="' +
+    unitBox('<input data-' + (flat ? "fv" : "pv") + '="' + m.id + '" type="number" step="' +
     (flat ? "500" : "1") + '" value="' + (flat ? (m.flat == null ? 0 : m.flat)
-      : (m.pct == null ? 0 : m.pct)) + '" title="' +
-    (flat ? "A fixed amount in dollars" : "% of the zone base") + '">' + second + '</div>';
+      : (m.pct == null ? 0 : m.pct)) + '" aria-label="' + esc(m.label) + (many ? ": the first" : "") + '">',
+      flat ? (many ? "first" : "") : (many ? "% first" : "%"), flat ? "$" : "") + second + '</div>' + effectHTML(m);
 }
 
 function renderRules() {
@@ -2271,7 +2316,7 @@ function renderRules() {
 
   $("#rulesMult").innerHTML = visible.length
     ? '<table class="data modtable"><thead><tr><th></th><th>Multiplier</th><th>Type</th>' +
-      '<th>Adds</th><th>Section</th><th></th></tr></thead><tbody>' +
+      '<th>Effect on the price</th><th>Section</th><th></th></tr></thead><tbody>' +
       visible.map(m => {
         const i = mods.indexOf(m);
         return '<tr><td style="white-space:nowrap;padding-right:0">' +
@@ -2284,7 +2329,7 @@ function renderRules() {
           (m.forcesAuction && S.rules.policy.auctionsEnabled
             ? '<div class="note">Forces an auction</div>' : '') + '</td>' +
         '<td class="note">' + esc(KIND_LABEL[m.kind] || m.kind) + '</td>' +
-        '<td>' + modernCell(m) + '</td>' +
+        '<td class="effectcell">' + modernCell(m) + '</td>' +
         '<td class="note">' + esc(m.group || "\u2014") + '</td>' +
         '<td style="white-space:nowrap"><button class="btn sm" data-editmod="' + m.id + '">Edit</button> ' +
           '<button class="btn sm danger icon" data-delmod="' + m.id + '" title="Delete ' + esc(m.label) +
@@ -2438,8 +2483,13 @@ function modModal(id) {
           if (v2) rec.value2 = +v2.value || 1;
           const modeEl = mm.querySelector('input[name="d_mode"]:checked');
           const asFlat = modeEl && modeEl.value === "flat";
+          const asOff = modeEl && modeEl.value === "off";
           const pc = $("#d_pct", mm), pc2 = $("#d_pct2", mm);
-          if (asFlat) {
+          if (asOff) {
+            const off = pc ? Math.abs(+pc.value || 0) : 0;
+            if (!off) { toast("Say what % it takes off."); return; }
+            rec.penaltyPct = off; rec.pct = 0; rec.pctExtra = 0; rec.flat = 0; rec.flatExtra = 0;
+          } else if (asFlat) {
             rec.flat = pc ? (+pc.value || 0) : 0;
             rec.flatExtra = pc2 ? (+pc2.value || 0) : 0;
             rec.pct = 0; rec.pctExtra = 0;
@@ -2451,7 +2501,8 @@ function modModal(id) {
         }
         if (id) {
           const target = modById(id);
-          Object.keys(target).forEach(k => { if (!(k in rec)) delete target[k]; });
+          const keep = ["special"];   // set elsewhere; the editor doesn't show them
+          Object.keys(target).forEach(k => { if (!(k in rec) && keep.indexOf(k) < 0) delete target[k]; });
           Object.assign(target, rec);
         } else S.rules.mods.push(rec);
         save(); closeModal(); renderAll();
@@ -2459,29 +2510,46 @@ function modModal(id) {
       } }]);
 
   const flatMode = isFlatFeature(m);
+  const startMode = penaltyPctOf(m) ? "off" : flatMode ? "flat" : "pct";
+  const LABELS = {
+    pct:  ["% of the zone price it adds", "% added for each one after the first"],
+    flat: ["Dollars it adds", "Dollars added for each one after the first"],
+    off:  ["% taken off the whole price", ""]
+  };
   const pctRow = (kind) => {
     if (kind === "choice") return "";
     const many = (kind === "count" || kind === "tiered");
+    const v1 = startMode === "off" ? (+m.penaltyPct || 0) : flatMode ? (+m.flat || 0) : (+m.pct || 0);
+    const v2 = flatMode ? (+m.flatExtra || 0) : (+m.pctExtra || 0);
     return '<div>' +
-      '<span class="lab">What it adds</span>' +
-      '<div class="row" style="gap:14px;margin-bottom:8px">' +
-        '<label class="row" style="gap:5px"><input type="radio" name="d_mode" value="pct"' +
-          (flatMode ? "" : " checked") + '> Share of the zone price</label>' +
-        '<label class="row" style="gap:5px"><input type="radio" name="d_mode" value="flat"' +
-          (flatMode ? " checked" : "") + '> A fixed amount</label>' +
+      '<span class="lab">What it does to the price</span>' +
+      '<div class="row" style="gap:14px;margin-bottom:8px;flex-wrap:wrap">' +
+        '<label class="row" style="gap:5px"><input type="radio" name="d_mode" value="pct"' + (startMode === "pct" ? " checked" : "") + '> Adds a share of the zone price</label>' +
+        '<label class="row" style="gap:5px"><input type="radio" name="d_mode" value="flat"' + (startMode === "flat" ? " checked" : "") + '> Adds a fixed amount</label>' +
+        '<label class="row" style="gap:5px"><input type="radio" name="d_mode" value="off"' + (startMode === "off" ? " checked" : "") + '> Takes a share off (a problem)</label>' +
       '</div>' +
       '<div class="' + (many ? "grid2" : "") + '">' +
-        '<div><span class="lab" data-modelab>' + (flatMode ? "Adds this many dollars" : "Adds this % of the zone base") + '</span>' +
-        '<input id="d_pct" type="number" step="' + (flatMode ? "500" : "1") + '" value="' +
-          (flatMode ? (m.flat == null ? 0 : m.flat) : (m.pct == null ? 0 : m.pct)) + '"></div>' +
-        (many ? '<div><span class="lab" data-modelab2>' +
-          (flatMode ? "Each after the first" : "%, each after the first") + '</span>' +
-          '<input id="d_pct2" type="number" step="' + (flatMode ? "500" : "1") + '" value="' +
-          (flatMode ? (m.flatExtra == null ? 0 : m.flatExtra) : (m.pctExtra == null ? 0 : m.pctExtra)) +
-          '"></div>' : "") +
-      '</div><p class="note" style="margin-top:5px">A share of the price suits anything about land ' +
-      'or the building itself. A fixed amount suits things with a cost of their own, since a shed is ' +
-      'a shed wherever it stands. Negative numbers take value off.</p></div>';
+        '<div><span class="lab" data-modelab>' + LABELS[startMode][0] + '</span>' +
+        '<input id="d_pct" type="number" step="' + (startMode === "flat" ? "500" : "1") + '" value="' + v1 + '"></div>' +
+        (many ? '<div data-second' + (startMode === "off" ? " hidden" : "") + '><span class="lab" data-modelab2>' + LABELS[startMode === "off" ? "pct" : startMode][1] + '</span>' +
+          '<input id="d_pct2" type="number" step="' + (startMode === "flat" ? "500" : "1") + '" value="' + v2 + '"></div>' : "") +
+      '</div>' +
+      '<div class="preview" id="d_preview"></div>' +
+      '<p class="note" style="margin-top:6px">A share of the price suits anything about the land or building. ' +
+      'A fixed amount suits things with their own cost; a shed is a shed wherever it stands. ' +
+      'Problems like a crime area take a share off the whole price.</p></div>';
+  };
+  const currentMode = () => { const el = mm.querySelector('input[name="d_mode"]:checked'); return el ? el.value : "pct"; };
+  const previewNow = () => {
+    const box = $("#d_preview", mm); if (!box) return;
+    const kind = $("#d_kind", mm).value, mode = currentMode();
+    const a = +($("#d_pct", mm) || {}).value || 0, b = +($("#d_pct2", mm) || {}).value || 0;
+    const t = { id: "_preview", label: $("#d_label", mm).value || "This", kind,
+      pct: mode === "pct" ? a : 0, pctExtra: mode === "pct" ? b : 0,
+      flat: mode === "flat" ? a : 0, flatExtra: mode === "flat" ? b : 0 };
+    if (mode === "off") t.penaltyPct = a;
+    const e = effectOf(t);
+    box.innerHTML = '<strong>On the appraisal:</strong> ' + esc(e.text) + (e.ex ? '<br><span class="note">' + esc(e.ex) + '</span>' : '');
   };
   const drawValues = () => {
     const kind = $("#d_kind", mm).value;
@@ -2526,12 +2594,16 @@ function modModal(id) {
     if (kind !== "choice") {
       box.innerHTML += pctRow(kind);
       $$('input[name="d_mode"]', mm).forEach(rb => rb.onchange = () => {
-        const flat = rb.value === "flat" && rb.checked;
-        const l1 = $("[data-modelab]", mm), l2 = $("[data-modelab2]", mm);
-        if (l1) l1.textContent = flat ? "Adds this many dollars" : "Adds this % of the zone base";
-        if (l2) l2.textContent = flat ? "Each after the first" : "%, each after the first";
+        const mode = currentMode(), flat = mode === "flat";
+        const l1 = $("[data-modelab]", mm), l2 = $("[data-modelab2]", mm), sec = $("[data-second]", mm);
+        if (l1) l1.textContent = LABELS[mode][0];
+        if (l2) l2.textContent = LABELS[mode === "off" ? "pct" : mode][1];
+        if (sec) sec.hidden = mode === "off";
         [$("#d_pct", mm), $("#d_pct2", mm)].forEach(i => { if (i) i.step = flat ? "500" : "1"; });
+        previewNow();
       });
+      $$("#d_pct, #d_pct2", mm).forEach(i => i.oninput = previewNow);
+      previewNow();
     }
   };
   drawValues();
