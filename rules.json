@@ -1,6 +1,6 @@
 {
   "kind": "dynasty8-office-pack",
-  "version": 9,
+  "version": 10,
   "issued": "2026-11-24",
   "note": "",
   "schema": 9,
@@ -38,8 +38,8 @@
     {
       "id": 16,
       "name": "Sandy Shores",
-      "base": 120000,
-      "floor": 90000,
+      "base": 100000,
+      "floor": 75000,
       "ceiling": 240000,
       "x": 1249,
       "y": 760,
@@ -48,9 +48,9 @@
     {
       "id": 14,
       "name": "Harmony",
-      "base": 50000,
+      "base": 55000,
       "floor": 38000,
-      "ceiling": 100000,
+      "ceiling": 110000,
       "x": 1004,
       "y": 902,
       "real": "Desert crossroads"
@@ -58,9 +58,9 @@
     {
       "id": 21,
       "name": "Alamo",
-      "base": 145000,
-      "floor": 109000,
-      "ceiling": 290000,
+      "base": 85000,
+      "floor": 50000,
+      "ceiling": 150000,
       "x": 1108,
       "y": 788,
       "real": "Salton Sea shore"
@@ -90,7 +90,7 @@
       "id": 1,
       "name": "South Los Santos",
       "base": 50000,
-      "floor": 38000,
+      "floor": 35000,
       "ceiling": 100000,
       "x": 951,
       "y": 1642,
@@ -99,9 +99,9 @@
     {
       "id": 25,
       "name": "East Los Santos",
-      "base": 85000,
-      "floor": 64000,
-      "ceiling": 170000,
+      "base": 50000,
+      "floor": 35000,
+      "ceiling": 100000,
       "x": 1122,
       "y": 1675,
       "real": "Boyle Heights"
