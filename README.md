@@ -9,11 +9,11 @@ The Multiple Listing Service run by HUG for every licensed real estate agency in
 
 | Piece | Who uses it | What it does |
 | --- | --- | --- |
-| `index.html` | Agencies | Listings, map, appraisals, warehouses, financing, clients, records. Agents see values and asking prices only, never the zones, multipliers or house rules behind them. |
+| `index.html` | Agencies | Listings, map, appraisals, warehouses, financing (when the director has it on) and clients. Agents see values and asking prices only, never the zones, multipliers or house rules behind them. |
 | `admin.html` | HUG Regional Director | Same tool with the zone editor on. Edits stay a draft until **Publish to all agencies**. |
 | `rules.json` | Written by the director console | Zones, price bands, multipliers, house rules and warehouse prices. Every agency loads it when they open the site. |
 
-Agency records (properties, clients, pictures) stay in each agency's own browser. Nothing is sent to HUG. Agencies should use **Records → Export backup** now and then.
+Agency records (properties, clients, pictures) stay in each agency's own browser. Nothing is sent to HUG. Backups and the Records tab are director-only.
 
 ## Giving the director a key
 

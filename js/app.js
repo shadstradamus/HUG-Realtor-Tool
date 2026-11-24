@@ -158,7 +158,7 @@ const DEFAULT_RULES = {
     agentCommissionPct: 6,
     evictionWarnDays: 7, furnitureMinPct: 20, furnitureMaxPct: 50,
     locationShare: 70, featureFullTo: 25, featureTaper: 50, maxDepreciationPct: 30, boundGive: 25,
-    auctionsEnabled: 1, uniqueForcesAuction: 1, standardSqft: 2000
+    auctionsEnabled: 1, uniqueForcesAuction: 1, standardSqft: 2000, financingEnabled: 1
   }
 };
 
@@ -777,7 +777,7 @@ function listingCopy(f, r) {
   L.push("");
   L.push(r.auction ? "AUCTION — opening at " + money(r.list) + "." : "Asking " + money(r.list) + ".");
   if (r.furnAdd) L.push("Sold furnished; furniture included in the asking price.");
-  L.push("Loans available with " + S.rules.policy.minDownPct + "% down.");
+  if (financingOn()) L.push("Loans available with " + S.rules.policy.minDownPct + "% down.");
   L.push("");
   L.push("Enquiries welcome.");
   return L.join("\n");
@@ -1986,6 +1986,7 @@ const POLICY_FIELDS = [
   ["boundGive", "How much value past a zone bound still counts (%)"],
   ["auctionsEnabled", "Auctions are used on this server", "bool"],
   ["uniqueForcesAuction", "Estates must go to auction", "bool"],
+  ["financingEnabled", "Financing is offered to buyers", "bool"],
   ["minDownPct", "Suggested downpayment (%)"],
   ["evictionWarnDays", "Eviction warning (days)"],
   ["furnitureMinPct", "Furniture uplift, lowest (%)"],
@@ -2201,6 +2202,17 @@ function renderRules() {
 
   $("#btnAddMod").onclick = () => modModal(null);
   stampTables();
+  applyFinancingSwitch();
+}
+
+/* The director can switch financing off for the whole state. */
+function financingOn() { return (S.rules.policy || {}).financingEnabled !== 0; }
+function applyFinancingSwitch() {
+  const on = financingOn();
+  const tab = document.querySelector('nav.tabs [data-view="loans"]');
+  if (tab) tab.hidden = !on;
+  const v = $("#view-loans");
+  if (!on && v && v.classList.contains("on")) showView("portfolio");
 }
 
 /* filters re-render without losing what was typed */
