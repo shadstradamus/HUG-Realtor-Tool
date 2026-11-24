@@ -29,6 +29,8 @@ To cut off access, delete the token on the same page and make a new one.
 
 ## Layout
 
+When you change anything in `css/` or `js/`, bump the `?v=` number on the links at the bottom of `index.html` and `admin.html` (same number in both). Browsers keep the old files otherwise.
+
 ```
 index.html      agency MLS
 admin.html      director console
