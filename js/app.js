@@ -420,7 +420,11 @@ const clone = v => JSON.parse(JSON.stringify(v));
 
 let S = migrate(Store.read());
 const packApplied = applyOfficePack(S);
-const save = () => Store.write(S);
+const save = () => {
+  Store.write(S);
+  // saved properties also go to the shared listings, when those are switched on
+  if (typeof Shared !== "undefined") Shared.queue();
+};
 if (packApplied) save();
 
 /* ------------------------------------------------------------
@@ -1552,6 +1556,7 @@ function staleBy(p) {
 }
 
 function renderPortfolio() {
+  if (typeof Shared !== "undefined" && Shared.showingAll()) { Shared.renderAll(); return; }
   const q = ($("#pfSearch").value || "").toLowerCase();
   const st = $("#pfStatus").value;
   const zf = $("#pfZone").value;
@@ -2908,8 +2913,12 @@ function drawPins() {
   };
 
   if (mode === "listings") {
+    // your own properties, plus every other agency's shared listings
+    const items = S.properties.map(p => ({ zone: p.zone, status: p.status, list: p.list, address: p.address,
+      who: "", open: () => propertyModal(p.id) }))
+      .concat(typeof Shared !== "undefined" ? Shared.mapItems() : []);
     const byZone = {};
-    S.properties.forEach(p => { (byZone[p.zone] = byZone[p.zone] || []).push(p); });
+    items.forEach(p => { (byZone[p.zone] = byZone[p.zone] || []).push(p); });
     Object.keys(byZone).forEach(zid => {
       const z = zoneById(zid); if (!z || !zoneOnMap(z)) return;
       const group = byZone[zid];
@@ -2918,7 +2927,7 @@ function drawPins() {
         const radius = group.length === 1 ? 0 : 15 + Math.floor(i / 8) * 13;
         makePin("prop", z.x + Math.cos(angle) * radius, z.y + Math.sin(angle) * radius - 20,
           statusColor(p.status), p.address + " \u00b7 " + money(p.list),
-          p.address + " \u00b7 " + p.status, () => propertyModal(p.id));
+          p.address + " \u00b7 " + p.status + (p.who ? " \u00b7 " + p.who : ""), p.open);
       });
     });
   }

@@ -432,3 +432,7 @@ body.gated .shell{visibility:hidden}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 #mapPins .pin.movable.estate .dot{box-shadow:0 0 0 3px #fff,0 0 0 6px var(--green)}
+
+/* shared listings */
+.codebox{background:#f4f6f9;border:1px solid var(--rule);border-radius:4px;padding:8px 10px;font:12px/1.45 var(--mono);white-space:pre-wrap;word-break:break-all;margin:0}
+#sharedWho .seg button[aria-pressed="true"]{background:var(--navy);color:#fff}

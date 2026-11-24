@@ -27,6 +27,17 @@ The director signs in with a key made from the site owner's GitHub account. They
 
 To cut off access, delete the token on the same page and make a new one.
 
+## Shared listings (Supabase)
+
+Saved properties can be shared with every agency through a free Supabase project. With it off, everything stays in each browser as before.
+
+1. In Supabase, turn on **Authentication → Sign In / Providers → Allow anonymous sign-ins**.
+2. Run `supabase/setup.sql` in the SQL Editor.
+3. Put the **Project URL** and the **anon public** key in `js/shared-config.js` and push. Never put the `service_role` key in the site.
+4. To let the director remove anyone's listing, open **Records** in the director console and run the line it shows in the SQL Editor.
+
+Each browser gets a hidden ID the first time it saves, and the database only lets that ID change or remove its own listings. Realtor names are what people type in, so they aren't verified. Clients, loans and photo files never leave the browser; photo links are shared.
+
 ## Layout
 
 When you change anything in `css/` or `js/`, bump the `?v=` number on the links at the bottom of `index.html` and `admin.html` (same number in both). Browsers keep the old files otherwise.
@@ -35,6 +46,9 @@ When you change anything in `css/` or `js/`, bump the `?v=` number on the links 
 index.html      agency MLS
 admin.html      director console
 rules.json      published rules (created by the first publish)
+js/shared.js    shared listings and realtor names
+js/shared-config.js  Supabase URL and public key
+supabase/       database setup
 css/hug.css     Capitol Navy theme
 js/app.js       the tool
 js/director.js  sign-in, draft tracking, publishing, history
