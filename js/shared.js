@@ -23,6 +23,7 @@ const Shared = (function () {
   let auth = read(K.auth);
   let pushed = read(K.pushed) || { owner: null, sigs: {} };
   let list = [];
+  let roster = [];
   let loaded = false, problem = "", busy = false, again = false, timer = null;
   let showing = "mine";
 
@@ -64,6 +65,31 @@ const Shared = (function () {
     return text ? JSON.parse(text) : null;
   }
 
+  /* ---------- realtor ID ----------
+     Worked out from the in-character name, so the same name gives the same
+     ID on any device: initials plus four digits, e.g. HUG-RR-4821. */
+  function realtorId(name) {
+    const clean = String(name || "").trim().toLowerCase().replace(/\s+/g, " ");
+    if (!clean) return "";
+    const words = clean.replace(/[^a-z0-9 ]/g, "").split(" ").filter(Boolean);
+    const initials = ((words[0] || "x")[0] + (words.length > 1 ? words[words.length - 1][0] : "")).toUpperCase();
+    let h = 0x811c9dc5;
+    for (let i = 0; i < clean.length; i++) { h ^= clean.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return "HUG-" + initials + "-" + String(h % 10000).padStart(4, "0");
+  }
+  const myRid = () => (profile && profile.name) ? realtorId(profile.name) : "";
+
+  /* Put this realtor on the roster so their name shows even before they list anything. */
+  async function register() {
+    if (!ON || !profile || !profile.name) return;
+    await session();
+    await api("realtors?on_conflict=owner", {
+      method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ owner: me(), realtor_id: myRid(), name: profile.name.slice(0, 60),
+        agency: (profile.agency || "").slice(0, 60), updated_at: new Date().toISOString() })
+    });
+  }
+
   /* ---------- what goes out for one property ---------- */
   function payload(p) {
     const f = p.form || {};
@@ -74,6 +100,7 @@ const Shared = (function () {
     return {
       owner: me(), local_id: String(p.id),
       agent: (profile && profile.name || "").slice(0, 60), agency: (profile && profile.agency || "").slice(0, 60),
+      realtor_id: myRid(),
       address: String(p.address || "").slice(0, 120), zone: +p.zone || null, status: p.status || "Draft",
       appraisal: Math.round(+p.appraisal || 0), asking: Math.round(+p.list || 0),
       sold_for: p.soldFor ? Math.round(+p.soldFor) : null,
@@ -81,7 +108,7 @@ const Shared = (function () {
       features, photos, updated_at: new Date(p.updated || Date.now()).toISOString()
     };
   }
-  const sigOf = b => JSON.stringify([b.agent, b.agency, b.address, b.zone, b.status, b.appraisal, b.asking,
+  const sigOf = b => JSON.stringify([b.agent, b.agency, b.realtor_id, b.address, b.zone, b.status, b.appraisal, b.asking,
     b.sold_for, b.sqft, b.rooms, b.features, b.photos]);
 
   /* Send what changed since last time, and take down what was removed. */
@@ -92,6 +119,9 @@ const Shared = (function () {
     try {
       await session();
       if (pushed.owner !== me()) pushed = { owner: me(), sigs: {} };
+      if (pushed.registered !== myRid() + "|" + profile.agency) {
+        await register(); pushed.registered = myRid() + "|" + profile.agency; write(K.pushed, pushed);
+      }
       const here = {};
       const out = [];
       S.properties.forEach(p => {
@@ -134,6 +164,7 @@ const Shared = (function () {
     if (!ON) return;
     try {
       list = (await api("listings?select=*&order=updated_at.desc&limit=2000")) || [];
+      roster = (await api("realtors?select=*&order=name.asc&limit=1000")) || [];
       loaded = true; problem = "";
     } catch (e) { problem = e.message || String(e); }
     if (showing === "all") renderPortfolio();
@@ -149,15 +180,20 @@ const Shared = (function () {
         'you save, so other agencies know who to call. It’s kept on this device.</p>' : '') +
       '<div class="fields"><label><span class="lab">Realtor name</span>' +
         '<input id="pf_name" maxlength="60" placeholder="Ricky Realtor" value="' + esc(p.name || "") + '"></label>' +
+      '<p class="note" style="margin:0">Your realtor ID comes from this name, so use the same name on every device.</p>' +
       '<label><span class="lab">Agency</span>' +
         '<input id="pf_agency" maxlength="60" placeholder="Dynasty 8" value="' + esc(p.agency || "") + '"></label></div>',
       [{ label: first ? "Later" : "Cancel", run: closeModal },
        { label: "Save", kind: "primary", run: m => {
           const name = $("#pf_name", m).value.trim();
           if (!name) { toast("Put in your realtor name first."); return; }
+          const rid = realtorId(name);
+          const taken = roster.find(r => r.realtor_id === rid && r.owner !== me());
           profile = { name, agency: $("#pf_agency", m).value.trim() };
           write(K.profile, profile);
-          closeModal(); paintWho(); toast("You’re listing as " + name + ".");
+          closeModal(); paintWho();
+          toast(taken ? "Another device already lists as " + name + " (" + rid + "). If that isn't you, pick a different name."
+                      : "You’re listing as " + name + " · " + rid + ".");
           queue();
         } }]);
   }
@@ -176,7 +212,8 @@ const Shared = (function () {
         '<button data-scope="mine" aria-pressed="' + (showing === "mine") + '">My listings</button>' +
         '<button data-scope="all" aria-pressed="' + (showing === "all") + '">All agencies</button></div>' : '') +
       '<p class="note" style="margin:4px 0 0">' + (profile && profile.name
-        ? 'Listing as <strong>' + esc(profile.name) + '</strong>' + (profile.agency ? ' · ' + esc(profile.agency) : '')
+        ? 'Listing as <strong>' + esc(profile.name) + '</strong> · <span class="rid">' + esc(myRid()) + '</span>' +
+          (profile.agency ? ' · ' + esc(profile.agency) : '')
         : 'No realtor name yet') +
       ' · <a href="#" id="pfWhoEdit">' + (profile && profile.name ? "Change" : "Add your name") + '</a>' +
       (problem && ON ? ' <span class="drift" title="' + esc(problem) + '">· shared listings offline</span>' : '') + '</p>';
@@ -200,7 +237,8 @@ const Shared = (function () {
     if (s < 86400) return Math.round(s / 3600) + " h ago";
     return Math.round(s / 86400) + " d ago";
   };
-  const whoOf = l => esc(l.agent || "Unnamed") + (l.agency ? '<div class="note">' + esc(l.agency) + '</div>' : '');
+  const whoOf = l => esc(l.agent || "Unnamed") +
+    '<div class="note">' + [l.realtor_id ? '<span class="rid">' + esc(l.realtor_id) + '</span>' : '', esc(l.agency || "")].filter(Boolean).join(" · ") + '</div>';
   const mine = l => l.owner === me();
 
   function renderAllAgencies() {
@@ -222,7 +260,7 @@ const Shared = (function () {
     else if (sort === "address") rows.sort((a, b) => a.address.localeCompare(b.address));
     else if (sort === "zone") rows.sort((a, b) => ((zoneById(a.zone) || {}).name || "").localeCompare((zoneById(b.zone) || {}).name || ""));
 
-    const agents = new Set(list.map(l => l.owner)).size;
+    const agents = Math.max(roster.length, new Set(list.map(l => l.owner)).size);
     const onMarket = list.filter(l => l.status === "Listed" || l.status === "Auction");
     $("#pfStats").innerHTML =
       '<div class="stat"><div class="n">' + list.length + '</div><div class="l">Shared listings</div></div>' +
@@ -255,6 +293,7 @@ const Shared = (function () {
           (MODE === "director" && !mine(l) ? ' <button class="btn sm danger" data-take-down="' + esc(l.id) + '">Remove</button>' : '') +
           '</td></tr>';
       }).join("") + '</tbody></table>';
+    $("#pfTable").insertAdjacentHTML("beforeend", directoryHTML());
     $$("#pfTable [data-view-shared]").forEach(b => b.onclick = () => viewListing(b.dataset.viewShared));
     $$("#pfTable [data-take-down]").forEach(b => b.onclick = () => takeDown(b.dataset.takeDown));
     stampTables();
@@ -276,6 +315,7 @@ const Shared = (function () {
       '</div>' +
       ((l.features || []).length ? '<p><strong>Features:</strong> ' + esc(l.features.join(", ")) + '</p>' : '') +
       '<p style="margin-top:8px"><strong>Realtor:</strong> ' + esc(l.agent || "Unnamed") +
+        (l.realtor_id ? ' · <span class="rid">' + esc(l.realtor_id) + '</span>' : '') +
         (l.agency ? " · " + esc(l.agency) : "") + '</p>' +
       '<p class="note" style="margin:4px 0 10px">Updated ' + ago(l.updated_at) + '</p>' +
       photoGrid((l.photos || []).map(u => ({ kind: "url", url: u }))),
@@ -316,6 +356,23 @@ const Shared = (function () {
   }
 
   /* ---------- Records (director) ---------- */
+  /* Every realtor on the MLS: name, ID, agency and what they have listed. */
+  function directoryHTML() {
+    if (!roster.length) return "";
+    const rows = roster.map(r => {
+      const theirs = list.filter(l => l.owner === r.owner);
+      const live = theirs.filter(l => l.status === "Listed" || l.status === "Auction").length;
+      return '<tr><td data-l="Realtor"><strong>' + esc(r.name) + '</strong>' + (r.owner === me() ? ' <span class="chip listed">You</span>' : '') + '</td>' +
+        '<td data-l="Realtor ID"><span class="rid">' + esc(r.realtor_id) + '</span></td>' +
+        '<td data-l="Agency">' + esc(r.agency || "\u2014") + '</td>' +
+        '<td class="num" data-l="Listings">' + theirs.length + '</td>' +
+        '<td class="num" data-l="On the market">' + live + '</td></tr>';
+    }).join("");
+    return '<h3 class="dirhead">Realtor directory</h3>' +
+      '<table class="data"><thead><tr><th>Realtor</th><th>Realtor ID</th><th>Agency</th><th class="num">Listings</th>' +
+      '<th class="num">On the market</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
   function statusHTML() {
     if (!ON) return '<div class="note">Shared listings are off. Put the Supabase project URL and public key in ' +
       '<code>js/shared-config.js</code> to switch them on.</div>';
@@ -358,7 +415,7 @@ const Shared = (function () {
   }
 
   return {
-    on: ON, queue, start, mapItems, askName,
+    on: ON, queue, start, mapItems, askName, realtorId,
     showingAll: () => ON && showing === "all",
     renderAll: renderAllAgencies
   };

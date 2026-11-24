@@ -36,7 +36,7 @@ Saved properties can be shared with every agency through a free Supabase project
 3. Put the **Project URL** and the **anon public** key in `js/shared-config.js` and push. Never put the `service_role` key in the site.
 4. To let the director remove anyone's listing, open **Records** in the director console and run the line it shows in the SQL Editor.
 
-Each browser gets a hidden ID the first time it saves, and the database only lets that ID change or remove its own listings. Realtor names are what people type in, so they aren't verified. Clients, loans and photo files never leave the browser; photo links are shared.
+Each realtor gets a realtor ID worked out from their in-character name (initials plus four digits, e.g. HUG-RR-0192), shown next to their name and in the Realtor directory under All agencies. Each browser also gets a hidden ID the first time it saves, and the database only lets that ID change or remove its own listings. Realtor names are what people type in, so they aren't verified. Clients, loans and photo files never leave the browser; photo links are shared.
 
 ## Layout
 

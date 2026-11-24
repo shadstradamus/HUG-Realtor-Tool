@@ -436,3 +436,7 @@ body.gated .shell{visibility:hidden}
 /* shared listings */
 .codebox{background:#f4f6f9;border:1px solid var(--rule);border-radius:4px;padding:8px 10px;font:12px/1.45 var(--mono);white-space:pre-wrap;word-break:break-all;margin:0}
 #sharedWho .seg button[aria-pressed="true"]{background:var(--navy);color:#fff}
+
+/* realtor IDs and the directory */
+.rid{font-family:var(--mono);font-size:12.5px;letter-spacing:.02em;color:var(--navy);background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:3px;padding:0 5px;white-space:nowrap}
+.dirhead{font:700 16px/1.3 var(--serif);color:var(--navy);margin:22px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--navy)}
