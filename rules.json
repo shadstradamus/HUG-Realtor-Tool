@@ -1,6 +1,6 @@
 {
   "kind": "dynasty8-office-pack",
-  "version": 12,
+  "version": 13,
   "issued": "2026-11-24",
   "note": "",
   "schema": 9,
@@ -298,6 +298,17 @@
       "x": 721,
       "y": 1593,
       "unique": false
+    },
+    {
+      "id": 24,
+      "name": "Cayo Mansion",
+      "base": 2500000,
+      "floor": 1950000,
+      "ceiling": 4250000,
+      "x": 1274,
+      "y": 1547,
+      "offshore": true,
+      "unique": true
     }
   ],
   "warehouses": [
@@ -658,7 +669,9 @@
       "uniqueForcesAuction": 0,
       "agentCommissionPct": 9,
       "standardSqft": 2000,
-      "financingEnabled": 0
+      "financingEnabled": 0,
+      "roomStepPct": 2.5,
+      "roomCapPct": 10
     }
   },
   "replaceZones": true,
