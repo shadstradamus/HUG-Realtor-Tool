@@ -1,0 +1,608 @@
+{
+  "kind": "dynasty8-office-pack",
+  "version": 1,
+  "issued": "2026-11-24",
+  "note": "Official zones and rules, taken from the Dynasty 8 tool",
+  "schema": 9,
+  "zones": [
+    {
+      "id": 15,
+      "name": "Stab City",
+      "base": 90000,
+      "floor": 75000,
+      "ceiling": 145000,
+      "x": 1102,
+      "y": 662
+    },
+    {
+      "id": 17,
+      "name": "Wind Farm Trailer Park",
+      "base": 88000,
+      "floor": 75000,
+      "ceiling": 150000,
+      "x": 1330,
+      "y": 762
+    },
+    {
+      "id": 18,
+      "name": "Senora Freeway",
+      "base": 90000,
+      "floor": 75000,
+      "ceiling": 153000,
+      "x": 1180,
+      "y": 900
+    },
+    {
+      "id": 16,
+      "name": "Sandy Shores",
+      "base": 92000,
+      "floor": 75000,
+      "ceiling": 156000,
+      "x": 1228,
+      "y": 738
+    },
+    {
+      "id": 14,
+      "name": "Harmony",
+      "base": 95000,
+      "floor": 75000,
+      "ceiling": 162000,
+      "x": 950,
+      "y": 860
+    },
+    {
+      "id": 21,
+      "name": "Alamo",
+      "base": 98000,
+      "floor": 76000,
+      "ceiling": 167000,
+      "x": 1090,
+      "y": 700
+    },
+    {
+      "id": 23,
+      "name": "Cayo Perico",
+      "base": 100000,
+      "floor": 78000,
+      "ceiling": 170000,
+      "x": 165,
+      "y": 1855,
+      "offshore": true
+    },
+    {
+      "id": 20,
+      "name": "Grapeseed",
+      "base": 105000,
+      "floor": 82000,
+      "ceiling": 179000,
+      "x": 1248,
+      "y": 556
+    },
+    {
+      "id": 1,
+      "name": "South Los Santos",
+      "base": 115000,
+      "floor": 90000,
+      "ceiling": 196000,
+      "x": 905,
+      "y": 1525
+    },
+    {
+      "id": 25,
+      "name": "East Los Santos",
+      "base": 130000,
+      "floor": 101000,
+      "ceiling": 221000,
+      "x": 1075,
+      "y": 1522
+    },
+    {
+      "id": 3,
+      "name": "Downtown",
+      "base": 145000,
+      "floor": 113000,
+      "ceiling": 247000,
+      "x": 890,
+      "y": 1400
+    },
+    {
+      "id": 5,
+      "name": "Little Seoul / Vespucci Canals",
+      "base": 155000,
+      "floor": 121000,
+      "ceiling": 264000,
+      "x": 722,
+      "y": 1478
+    },
+    {
+      "id": 4,
+      "name": "Lower Vespucci / Little Seoul",
+      "base": 165000,
+      "floor": 129000,
+      "ceiling": 281000,
+      "x": 762,
+      "y": 1432
+    },
+    {
+      "id": 22,
+      "name": "Paleto Bay",
+      "base": 175000,
+      "floor": 137000,
+      "ceiling": 298000,
+      "x": 905,
+      "y": 252
+    },
+    {
+      "id": 9,
+      "name": "Vinewood",
+      "base": 210000,
+      "floor": 164000,
+      "ceiling": 357000,
+      "x": 925,
+      "y": 1288
+    },
+    {
+      "id": 2,
+      "name": "Mirror Park",
+      "base": 250000,
+      "floor": 195000,
+      "ceiling": 425000,
+      "x": 1005,
+      "y": 1372
+    },
+    {
+      "id": 12,
+      "name": "Upper Mirror Park",
+      "base": 305000,
+      "floor": 238000,
+      "ceiling": 519000,
+      "x": 1022,
+      "y": 1330
+    },
+    {
+      "id": 7,
+      "name": "Del Perro",
+      "base": 325000,
+      "floor": 254000,
+      "ceiling": 553000,
+      "x": 632,
+      "y": 1390
+    },
+    {
+      "id": 8,
+      "name": "Morningwood",
+      "base": 510000,
+      "floor": 398000,
+      "ceiling": 867000,
+      "x": 648,
+      "y": 1352
+    },
+    {
+      "id": 13,
+      "name": "Chumash",
+      "base": 770000,
+      "floor": 601000,
+      "ceiling": 1310000,
+      "x": 478,
+      "y": 1010
+    },
+    {
+      "id": 10,
+      "name": "Vinewood Hills",
+      "base": 900000,
+      "floor": 702000,
+      "ceiling": 1530000,
+      "x": 845,
+      "y": 1158
+    },
+    {
+      "id": 6,
+      "name": "Rockford Hills",
+      "base": 950000,
+      "floor": 741000,
+      "ceiling": 1620000,
+      "x": 763,
+      "y": 1322
+    },
+    {
+      "id": 11,
+      "name": "Medrazzo Ranch",
+      "base": 2500000,
+      "floor": 1950000,
+      "ceiling": 4250000,
+      "x": 1000,
+      "y": 1000,
+      "unique": true
+    },
+    {
+      "id": 19,
+      "name": "Lighthouse",
+      "base": 2500000,
+      "floor": 1950000,
+      "ceiling": 4250000,
+      "x": 1418,
+      "y": 764,
+      "unique": true
+    },
+    {
+      "id": 26,
+      "name": "Farmhouse Grapeseed",
+      "base": 2500000,
+      "floor": 1950000,
+      "ceiling": 4250000,
+      "x": 1312,
+      "y": 512,
+      "unique": true
+    },
+    {
+      "id": 24,
+      "name": "Cayo Mansion",
+      "base": 2500000,
+      "floor": 1950000,
+      "ceiling": 4250000,
+      "x": 268,
+      "y": 1900,
+      "offshore": true,
+      "unique": true
+    }
+  ],
+  "warehouses": [
+    {
+      "id": "compact_warehouse",
+      "label": "Executive Lockup",
+      "tier": "small",
+      "price": 250000,
+      "interior": "Corrugated lockup, single roller door"
+    },
+    {
+      "id": "standard_warehouse",
+      "label": "Executive Depot",
+      "tier": "small",
+      "price": 325000,
+      "interior": "Fitted workshop with benches and cabinets"
+    },
+    {
+      "id": "premium_warehouse",
+      "label": "Executive Storage",
+      "tier": "small",
+      "price": 425000,
+      "interior": "Clean white hall, open floor"
+    },
+    {
+      "id": "small_warehouse",
+      "label": "Corporate Warehouse",
+      "tier": "small",
+      "price": 600000,
+      "interior": "Small cargo warehouse, two racking bays"
+    },
+    {
+      "id": "medium_warehouse",
+      "label": "Commercial Warehouse",
+      "tier": "medium",
+      "price": 850000,
+      "interior": "Medium cargo warehouse, rows of racking"
+    },
+    {
+      "id": "large_warehouse",
+      "label": "Large Warehouse",
+      "tier": "xl",
+      "price": 1400000,
+      "interior": "Large cargo warehouse, full racking aisles"
+    },
+    {
+      "id": "car_garage",
+      "label": "Enterprise Warehouse",
+      "tier": "xl",
+      "price": 1700000,
+      "interior": "Vehicle warehouse with lifts and bays"
+    },
+    {
+      "id": "xl_warehouse",
+      "label": "Premier Warehouse",
+      "tier": "xl",
+      "price": 2000000,
+      "interior": "Underground vehicle floor, multiple levels"
+    }
+  ],
+  "rules": {
+    "mods": [
+      {
+        "id": "rooms",
+        "label": "Rooms",
+        "group": "Counts",
+        "kind": "count",
+        "value": 1.1,
+        "pct": 0,
+        "hint": "Rooms only \u2014 hallways don't count. Four rooms is the baseline."
+      },
+      {
+        "id": "pools",
+        "label": "Pools",
+        "group": "Counts",
+        "kind": "tiered",
+        "value": 1.4,
+        "value2": 1.2,
+        "pct": 4,
+        "pctExtra": -2,
+        "hint": "A second pool eats the yard and costs value"
+      },
+      {
+        "id": "garages",
+        "label": "Garages",
+        "group": "Counts",
+        "kind": "count",
+        "value": 1.1,
+        "flat": 12000,
+        "flatExtra": 6000,
+        "hint": "A fixed amount each, not a share of the zone price"
+      },
+      {
+        "id": "buildings",
+        "label": "Additional buildings",
+        "group": "Counts",
+        "kind": "count",
+        "value": 1.3,
+        "pct": 8,
+        "pctExtra": 4
+      },
+      {
+        "id": "courts",
+        "label": "Tennis or basketball courts",
+        "group": "Counts",
+        "kind": "count",
+        "value": 1.2,
+        "flat": 10000,
+        "flatExtra": 4000
+      },
+      {
+        "id": "type",
+        "label": "Property type",
+        "group": "Property",
+        "kind": "choice",
+        "value": 1,
+        "options": [
+          {
+            "label": "House",
+            "value": 1,
+            "pct": 0
+          },
+          {
+            "label": "Apartment",
+            "value": 0.9,
+            "pct": -8
+          },
+          {
+            "label": "Trailer",
+            "value": 0.8,
+            "pct": -18
+          }
+        ]
+      },
+      {
+        "id": "driveway",
+        "label": "Paved driveway",
+        "group": "Grounds and features",
+        "kind": "toggle",
+        "value": 1.1,
+        "flat": 3000
+      },
+      {
+        "id": "frontGarden",
+        "label": "Front garden",
+        "group": "Grounds and features",
+        "kind": "choice",
+        "value": 1,
+        "options": [
+          {
+            "label": "None",
+            "value": 1,
+            "pct": 0
+          },
+          {
+            "label": "Small",
+            "value": 1.1,
+            "pct": 2
+          },
+          {
+            "label": "Large",
+            "value": 1.2,
+            "pct": 5
+          }
+        ]
+      },
+      {
+        "id": "rearGarden",
+        "label": "Rear garden",
+        "group": "Grounds and features",
+        "kind": "choice",
+        "value": 1,
+        "options": [
+          {
+            "label": "None",
+            "value": 1,
+            "pct": 0
+          },
+          {
+            "label": "Small",
+            "value": 1.3,
+            "pct": 4
+          },
+          {
+            "label": "Large",
+            "value": 1.45,
+            "pct": 8
+          }
+        ]
+      },
+      {
+        "id": "decking",
+        "label": "Decking or patio",
+        "group": "Grounds and features",
+        "kind": "toggle",
+        "value": 1.1,
+        "pct": 3
+      },
+      {
+        "id": "beachfront",
+        "label": "Beachfront or water access",
+        "group": "Grounds and features",
+        "kind": "toggle",
+        "value": 1.1,
+        "pct": 20,
+        "hint": "Water is the biggest single driver of land value"
+      },
+      {
+        "id": "balcony",
+        "label": "Balcony",
+        "group": "Grounds and features",
+        "kind": "toggle",
+        "value": 1.4,
+        "pct": 3
+      },
+      {
+        "id": "shed",
+        "label": "Shed",
+        "group": "Grounds and features",
+        "kind": "toggle",
+        "value": 1.1,
+        "flat": 4000
+      },
+      {
+        "id": "solar",
+        "label": "Solar panels",
+        "group": "Grounds and features",
+        "kind": "toggle",
+        "value": 1.1,
+        "flat": 9000
+      },
+      {
+        "id": "mlo",
+        "label": "Custom interior (MLO)",
+        "group": "Grounds and features",
+        "kind": "toggle",
+        "value": 1.6,
+        "pct": 10,
+        "forcesAuction": true
+      },
+      {
+        "id": "storage",
+        "label": "Storage or warehouse",
+        "group": "Grounds and features",
+        "kind": "choice",
+        "value": 1,
+        "outside": true,
+        "hint": "Exempt from the square root in legacy",
+        "options": [
+          {
+            "label": "None",
+            "value": 1,
+            "pct": 0
+          },
+          {
+            "label": "Standard",
+            "value": 1.6,
+            "pct": 12
+          },
+          {
+            "label": "Large",
+            "value": 2.4,
+            "pct": 22
+          }
+        ]
+      },
+      {
+        "id": "exotic",
+        "label": "Exotic or unique feature",
+        "group": "Grounds and features",
+        "kind": "free",
+        "value": 1.2,
+        "value2": 5,
+        "pct": 8,
+        "forcesAuction": true,
+        "hint": "Legacy uses the multiplier you type; modern adds a flat percentage per feature."
+      },
+      {
+        "id": "torture",
+        "label": "Hidden torture room",
+        "group": "Disclosures and hazards",
+        "kind": "choice",
+        "value": 1,
+        "special": true,
+        "options": [
+          {
+            "label": "None",
+            "value": 1
+          },
+          {
+            "label": "Torture room",
+            "value": 2
+          },
+          {
+            "label": "Torture + armoury",
+            "value": 4
+          }
+        ]
+      },
+      {
+        "id": "drugLab",
+        "label": "Hidden drug lab",
+        "group": "Disclosures and hazards",
+        "kind": "toggle",
+        "value": 2,
+        "special": true
+      },
+      {
+        "id": "panic",
+        "label": "Panic mode lockdown",
+        "group": "Disclosures and hazards",
+        "kind": "toggle",
+        "value": 8,
+        "special": true
+      },
+      {
+        "id": "cougars",
+        "label": "Cougars spawn in the garden",
+        "group": "Disclosures and hazards",
+        "kind": "toggle",
+        "value": 0.9,
+        "penaltyPct": 10
+      },
+      {
+        "id": "death",
+        "label": "Recorded death in the house",
+        "group": "Disclosures and hazards",
+        "kind": "toggle",
+        "value": 0.8,
+        "penaltyPct": 12,
+        "hint": "A stigmatised property sells slower, not cheaper by much"
+      },
+      {
+        "id": "crimeArea",
+        "label": "Violent crime area",
+        "group": "Disclosures and hazards",
+        "kind": "toggle",
+        "value": 0.9,
+        "penaltyPct": 10,
+        "hint": "Players are known to be robbed here"
+      }
+    ],
+    "policy": {
+      "roundIncrement": 5000,
+      "minDownPct": 20,
+      "agentCommissionPct": 6,
+      "evictionWarnDays": 7,
+      "furnitureMinPct": 20,
+      "furnitureMaxPct": 50,
+      "locationShare": 70,
+      "featureFullTo": 25,
+      "featureTaper": 50,
+      "maxDepreciationPct": 30,
+      "boundGive": 25,
+      "auctionsEnabled": 1,
+      "uniqueForcesAuction": 1
+    }
+  },
+  "replaceZones": false,
+  "keepLocalPolicy": false,
+  "publishedBy": "HUG Regional Director"
+}
