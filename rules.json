@@ -1,8 +1,8 @@
 {
   "kind": "dynasty8-office-pack",
-  "version": 7,
+  "version": 8,
   "issued": "2026-11-24",
-  "note": "Wording cleanup on the appraisal form",
+  "note": "Cayo Perico zones moved onto the new Cayo Perico map",
   "schema": 9,
   "zones": [
     {
@@ -71,8 +71,8 @@
       "base": 65000,
       "floor": 49000,
       "ceiling": 130000,
-      "x": 1566,
-      "y": 1611,
+      "x": 1190,
+      "y": 1040,
       "offshore": true,
       "real": "Island village"
     },
@@ -265,8 +265,8 @@
       "base": 1650000,
       "floor": 1238000,
       "ceiling": 3300000,
-      "x": 1566,
-      "y": 1519,
+      "x": 1274,
+      "y": 1547,
       "offshore": true,
       "unique": true,
       "real": "Private island compound"

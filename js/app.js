@@ -38,7 +38,8 @@ const Store = {
 };
 
 /* ---------- zones ---------- */
-// Pin coordinates are pixels on the 2048x2048 map images.
+// Pin coordinates are pixels on the 2048x2048 map images. Offshore zones
+// sit on the Cayo Perico map; every other zone sits on the Los Santos map.
 /* Warehouses are sold at a flat rate. The interior is the same interior
    wherever the door is, so no zone multiplier applies. Order is smallest
    to largest, which is also the order they appear in the script. */
@@ -71,7 +72,7 @@ const DEFAULT_ZONES = [
   { id: 16, name: "Sandy Shores",                  base: 92000,   floor: 75000,   ceiling: 156000,  x: 1228, y: 738 },
   { id: 14, name: "Harmony",                       base: 95000,   floor: 75000,   ceiling: 162000,  x: 950,  y: 860 },
   { id: 21, name: "Alamo",                         base: 98000,   floor: 76000,   ceiling: 167000,  x: 1090, y: 700 },
-  { id: 23, name: "Cayo Perico",                   base: 100000,  floor: 78000,   ceiling: 170000,  x: 165,  y: 1855, offshore: true },
+  { id: 23, name: "Cayo Perico",                   base: 100000,  floor: 78000,   ceiling: 170000,  x: 1190, y: 1040, offshore: true },
   { id: 20, name: "Grapeseed",                     base: 105000,  floor: 82000,   ceiling: 179000,  x: 1248, y: 556 },
   { id: 1,  name: "South Los Santos",              base: 115000,  floor: 90000,   ceiling: 196000,  x: 905,  y: 1525 },
   { id: 25, name: "East Los Santos",               base: 130000,  floor: 101000,  ceiling: 221000,  x: 1075, y: 1522 },
@@ -90,7 +91,7 @@ const DEFAULT_ZONES = [
   { id: 11, name: "Medrazzo Ranch",                base: 2500000, floor: 1950000, ceiling: 4250000, x: 1000, y: 1000, unique: true },
   { id: 19, name: "Lighthouse",                    base: 2500000, floor: 1950000, ceiling: 4250000, x: 1418, y: 764,  unique: true },
   { id: 26, name: "Farmhouse Grapeseed",           base: 2500000, floor: 1950000, ceiling: 4250000, x: 1312, y: 512,  unique: true },
-  { id: 24, name: "Cayo Mansion",                  base: 2500000, floor: 1950000, ceiling: 4250000, x: 268,  y: 1900, offshore: true, unique: true }
+  { id: 24, name: "Cayo Mansion",                  base: 2500000, floor: 1950000, ceiling: 4250000, x: 1274, y: 1547, offshore: true, unique: true }
 ];
 
 /* Fieldset order on the appraisal form. Any module with a group not listed
@@ -2701,22 +2702,52 @@ const MAP_FILES = {
   road: "GTAV_ROADMAP_2048x2048.png"
 };
 function mapSource(layer) {
+  if (mapRegion() === "cayo") {
+    const l = layer === "custom" ? "atlas" : layer;
+    return (typeof EMBED !== "undefined" && EMBED["cayo_" + l]) || "img/map-cayo-atlas.webp";
+  }
   if (layer === "custom" && S.customMap) return S.customMap;
   return (typeof EMBED !== "undefined" && EMBED[layer]) || MAP_FILES[layer] || MAP_FILES.atlas;
 }
+const MAP_SEA = { atlas: "#0fa8d1", satellite: "#143c6a", road: "#1963ae",
+  cayo_atlas: "#4eb2cf", cayo_satellite: "#0d2c4e", cayo_road: "#2e3d43" };
+function shownLayer(layer) { return mapRegion() === "cayo" && layer === "custom" ? "atlas" : layer; }
+/* Two maps: Los Santos and Cayo Perico. Both images are 2048 square,
+   so pins use the same pixel grid on either one. */
+function mapRegion() { return S.ui.region === "cayo" ? "cayo" : "ls"; }
+function zoneOnMap(z) { return !!z.offshore === (mapRegion() === "cayo"); }
+function setRegion(region) {
+  if (mapRegion() === region) return false;
+  S.ui.region = region; save();
+  if (selectedZone) { const z = zoneById(selectedZone); if (z && !zoneOnMap(z)) clearZone(); }
+  applyLayer();
+  if ($("#view-map").classList.contains("on")) { fitMap(); drawPins(); }
+  return true;
+}
+/* opening a zone from elsewhere switches to the map it sits on */
+function regionFor(z) { if (z && !zoneOnMap(z)) setRegion(z.offshore ? "cayo" : "ls"); }
 const MAP_PX = 2048;
 const view = { x: 0, y: 0, k: 0.35 };
 let editorOn = false, editorTool = null, selectedZone = null;
 
 function applyLayer() {
   const layer = S.ui.layer || "atlas";
+  const cayo = mapRegion() === "cayo";
   const img = $("#mapImg");
   img.src = mapSource(layer);
+  img.alt = cayo ? "Cayo Perico" : "Los Santos and Blaine County";
+  // fill the space around the picture with its own sea colour
+  $("#mapWrap").style.background = layer === "custom" && !cayo ? "" : MAP_SEA[(cayo ? "cayo_" : "") + shownLayer(layer)] || "";
   img.onerror = () => {
     $("#mapInfo").innerHTML = '<div class="warn"><strong>That map image will not load.</strong> ' +
       'Pick another layer, or load your own from the Data tab.</div>';
   };
-  $$("#mapLayer button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.layer === layer)));
+  const shown = shownLayer(layer);
+  $$("#mapLayer button").forEach(b => {
+    b.setAttribute("aria-pressed", String(b.dataset.layer === shown));
+    if (b.dataset.layer === "custom") b.hidden = cayo;   // a custom map only covers Los Santos
+  });
+  $$("#mapRegion button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.region === mapRegion())));
   $$("#mapMode button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === S.ui.mode)));
 }
 function minZoom() {
@@ -2808,7 +2839,7 @@ function drawPins() {
     const byZone = {};
     S.properties.forEach(p => { (byZone[p.zone] = byZone[p.zone] || []).push(p); });
     Object.keys(byZone).forEach(zid => {
-      const z = zoneById(zid); if (!z) return;
+      const z = zoneById(zid); if (!z || !zoneOnMap(z)) return;
       const group = byZone[zid];
       group.forEach((p, i) => {
         const angle = (i / Math.max(1, group.length)) * Math.PI * 2;
@@ -2821,6 +2852,7 @@ function drawPins() {
   }
 
   S.zones.forEach(z => {
+    if (!zoneOnMap(z)) return;
     const st = zoneStats(z.id);
     const colour = mode === "value" ? priceColor(z.base) : (z.unique ? "#c79a12" : "#13568c");
     const label = mode === "value"
@@ -2843,6 +2875,7 @@ function drawPins() {
 /* centre the view on a zone without changing the zoom */
 function panToZone(id) {
   const z = zoneById(id); if (!z) return;
+  regionFor(z);
   const w = $("#mapWrap").clientWidth, hh = $("#mapWrap").clientHeight;
   if (view.k < 0.5) view.k = 0.5;
   view.x = w / 2 - z.x * view.k;
@@ -2874,9 +2907,10 @@ function makeDraggable(el, z) {
 }
 
 function selectZone(id) {
-  selectedZone = id;
   const z = zoneById(id);
   if (!z) { clearZone(); return; }
+  regionFor(z);
+  selectedZone = id;
   const st = zoneStats(id);
   const P = S.rules.policy;
   const auctionNote = z.unique && P.auctionsEnabled && P.uniqueForcesAuction
@@ -3003,6 +3037,7 @@ $$("#mapLayer button").forEach(b => b.onclick = () => {
   if (b.dataset.layer === "custom" && !S.customMap) { toast("Load a custom map image from the Data tab first."); return; }
   S.ui.layer = b.dataset.layer; save(); applyLayer();
 });
+$$("#mapRegion button").forEach(b => b.onclick = () => setRegion(b.dataset.region));
 $$("#mapMode button").forEach(b => b.onclick = () => {
   S.ui.mode = b.dataset.mode; save(); applyLayer(); drawPins(); renderLegend();
 });
@@ -3038,7 +3073,8 @@ $("#edMove").onclick = () => {
 };
 function newZoneAt(x, y) {
   const nextId = S.zones.reduce((m, z) => Math.max(m, +z.id || 0), 0) + 1;
-  zoneModal(null, { id: nextId, name: "", base: 100000, floor: 0, ceiling: 0, x, y, unique: false });
+  zoneModal(null, { id: nextId, name: "", base: 100000, floor: 0, ceiling: 0, x, y, unique: false,
+    offshore: mapRegion() === "cayo" });
 }
 function zoneModal(id, draft) {
   const z = id ? zoneById(id) : draft;
@@ -3052,7 +3088,8 @@ function zoneModal(id, draft) {
     '<div style="margin-bottom:10px"><span class="lab">Name</span><input id="z_name" value="' + esc(z.name) + '" placeholder="e.g. Palomino Highlands"></div>' +
     '<label class="row" style="gap:6px"><input type="checkbox" id="z_uniq"' + (z.unique ? " checked" : "") +
       '> Estate</label>' +
-    '<p class="note" style="margin-top:9px">Dropped at ' + z.x + ", " + z.y + " on the map. Drag it later with the move tool.</p>",
+    '<p class="note" style="margin-top:9px">Dropped at ' + z.x + ", " + z.y + " on the " +
+      (z.offshore ? "Cayo Perico" : "Los Santos") + " map. Drag it later with the move tool.</p>",
     [{ label: "Cancel", run: closeModal },
      { label: id ? "Save zone" : "Create zone", kind: "primary", run: () => {
         const name = $("#z_name", m).value.trim();
@@ -3062,6 +3099,7 @@ function zoneModal(id, draft) {
         const rec = { id: id || +$("#z_id", m).value, name, base: +$("#z_base", m).value || 0,
           floor, ceiling,
           x: z.x, y: z.y, unique: $("#z_uniq", m).checked };
+        if (z.offshore) rec.offshore = true;   // placed on the Cayo Perico map
         if (id) Object.assign(zoneById(id), rec);
         else {
           if (zoneById(rec.id)) { toast("Zone " + rec.id + " already exists."); return; }

@@ -13,5 +13,8 @@ const EMBED = {
   logo: "img/hug-seal.webp",
   atlas: "img/map-atlas.webp",
   satellite: "img/map-satellite.webp",
-  road: "img/map-road.webp"
+  road: "img/map-road.webp",
+  cayo_atlas: "img/map-cayo-atlas.webp",
+  cayo_satellite: "img/map-cayo-satellite.webp",
+  cayo_road: "img/map-cayo-road.webp"
 };
