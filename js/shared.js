@@ -24,6 +24,7 @@ const Shared = (function () {
   let pushed = read(K.pushed) || { owner: null, sigs: {} };
   let list = [];
   let roster = [];
+  let agencies = [];
   let loaded = false, problem = "", busy = false, again = false, timer = null;
   let showing = "mine";
 
@@ -165,11 +166,76 @@ const Shared = (function () {
     try {
       list = (await api("listings?select=*&order=updated_at.desc&limit=2000")) || [];
       roster = (await api("realtors?select=*&order=name.asc&limit=1000")) || [];
+      agencies = (await api("agencies?select=*&order=name.asc")) || [];
+      paintAgencies();
       loaded = true; problem = "";
     } catch (e) { problem = e.message || String(e); }
     if (showing === "all") renderPortfolio();
     if (S.ui.mode === "listings" && $("#view-map").classList.contains("on")) drawPins();
     paintStatus();
+  }
+
+  /* ---------- agencies (the director keeps the list) ---------- */
+  function agencySelect(current) {
+    const names = agencies.map(a => a.name);
+    const cur = current || "";
+    const opts = ['<option value="">Independent realtor</option>']
+      .concat(names.map(n => '<option' + (n === cur ? " selected" : "") + '>' + esc(n) + '</option>'));
+    if (cur && names.indexOf(cur) < 0)
+      opts.push('<option selected value="' + esc(cur) + '">' + esc(cur) + ' (no longer listed)</option>');
+    return '<select id="pf_agency">' + opts.join("") + '</select>';
+  }
+  function paintAgencies() {
+    const box = $("#agencyAdmin"); if (!box) return;
+    box.innerHTML = (agencies.length
+      ? '<table class="data"><thead><tr><th>Agency</th><th class="num">Realtors</th><th></th></tr></thead><tbody>' +
+        agencies.map(a => '<tr><td data-l="Agency"><strong>' + esc(a.name) + '</strong></td>' +
+          '<td class="num" data-l="Realtors">' + roster.filter(r => r.agency === a.name).length + '</td>' +
+          '<td style="white-space:nowrap"><button class="btn sm" data-ag-rename="' + esc(a.id) + '">Rename</button> ' +
+          '<button class="btn sm danger" data-ag-del="' + esc(a.id) + '">Remove</button></td></tr>').join("") + '</tbody></table>'
+      : '<p class="note">No agencies yet.</p>') +
+      '<div class="row" style="margin-top:12px"><input id="agNew" maxlength="60" placeholder="New agency name" style="flex:1"> ' +
+      '<button class="btn primary sm" id="agAdd">Add agency</button></div>';
+    stampTables();
+  }
+  async function agencyCall(fn, okMsg) {
+    try {
+      const out = await fn();
+      if (Array.isArray(out) && !out.length) { toast("Not saved. This browser isn’t on the director list yet; its ID is under Shared listings."); return; }
+      toast(okMsg); await fetchAll();
+    } catch (e) {
+      toast(/row-level security|permission/i.test(e.message) ? "Not saved. This browser isn’t on the director list yet; its ID is under Shared listings." : e.message);
+    }
+  }
+  function mountAgencies() {
+    if (MODE !== "director" || !ON || $("#agencyPanel")) return;
+    const cols = $("#view-data .cols"); if (!cols) return;
+    const panel = document.createElement("div");
+    panel.className = "panel"; panel.id = "agencyPanel";
+    panel.innerHTML = '<h2>Agencies</h2><div class="body"><p class="note" style="margin:0 0 10px">Realtors pick their agency from this list.</p><div id="agencyAdmin"></div></div>';
+    cols.appendChild(panel);
+    paintAgencies();
+    panel.addEventListener("click", e => {
+      const t = e.target.closest("button"); if (!t) return;
+      const ret = { headers: { Prefer: "return=representation" } };
+      if (t.id === "agAdd") {
+        const name = $("#agNew").value.trim(); if (!name) { toast("Type the agency name first."); return; }
+        agencyCall(() => api("agencies", Object.assign({ method: "POST", body: JSON.stringify({ name }) }, ret)), name + " added.");
+      } else if (t.dataset.agRename) {
+        const a = agencies.find(x => x.id === t.dataset.agRename); if (!a) return;
+        openModal("Rename agency", '<label><span class="lab">Agency name</span><input id="agName" maxlength="60" value="' + esc(a.name) + '"></label>',
+          [{ label: "Cancel", run: closeModal }, { label: "Rename", kind: "primary", run: m => {
+            const name = $("#agName", m).value.trim(); if (!name) return; closeModal();
+            agencyCall(() => api("agencies?id=eq." + a.id, Object.assign({ method: "PATCH", body: JSON.stringify({ name }) }, ret)), "Renamed to " + name + ".");
+          } }]);
+      } else if (t.dataset.agDel) {
+        const a = agencies.find(x => x.id === t.dataset.agDel); if (!a) return;
+        openModal("Remove agency", '<p>Remove <strong>' + esc(a.name) + '</strong> from the list?</p>' +
+          '<p class="note" style="margin-top:8px">Realtors already in it keep the name until they change it.</p>',
+          [{ label: "Keep it", run: closeModal }, { label: "Remove", kind: "danger", run: () => { closeModal();
+            agencyCall(() => api("agencies?id=eq." + a.id, Object.assign({ method: "DELETE" }, ret)), a.name + " removed."); } }]);
+      }
+    });
   }
 
   /* ---------- the realtor's name ---------- */
@@ -181,15 +247,14 @@ const Shared = (function () {
       '<div class="fields"><label><span class="lab">Realtor name</span>' +
         '<input id="pf_name" maxlength="60" placeholder="Ricky Realtor" value="' + esc(p.name || "") + '"></label>' +
       '<p class="note" style="margin:0">Your realtor ID comes from this name, so use the same name on every device.</p>' +
-      '<label><span class="lab">Agency</span>' +
-        '<input id="pf_agency" maxlength="60" placeholder="Dynasty 8" value="' + esc(p.agency || "") + '"></label></div>',
+      '<label><span class="lab">Agency</span>' + agencySelect(p.agency) + '</label></div>',
       [{ label: first ? "Later" : "Cancel", run: closeModal },
        { label: "Save", kind: "primary", run: m => {
           const name = $("#pf_name", m).value.trim();
           if (!name) { toast("Put in your realtor name first."); return; }
           const rid = realtorId(name);
           const taken = roster.find(r => r.realtor_id === rid && r.owner !== me());
-          profile = { name, agency: $("#pf_agency", m).value.trim() };
+          profile = { name, agency: $("#pf_agency", m).value };
           write(K.profile, profile);
           closeModal(); paintWho();
           toast(taken ? "Another device already lists as " + name + " (" + rid + "). If that isn't you, pick a different name."
@@ -407,7 +472,11 @@ const Shared = (function () {
   function start() {
     paintWho();
     mountRecords();
-    if (!profile || !profile.name) setTimeout(() => { if (!$("#scrim").classList.contains("on")) askName(true); }, 400);
+    mountAgencies();
+    if (!profile || !profile.name) {
+      const ask = () => { if (!$("#scrim").classList.contains("on")) askName(true); };
+      if (ON) fetchAll().then(ask, ask); else setTimeout(ask, 400);
+    }
     if (ON) {
       fetchAll().then(() => queue());
       setInterval(() => { if (document.visibilityState === "visible") fetchAll(); }, 60000);
