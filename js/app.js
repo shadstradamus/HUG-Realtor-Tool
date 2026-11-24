@@ -104,7 +104,7 @@ function legacyMods() {
     // value / value2  drive the legacy multiplier model
     // pct / pctExtra / options[].pct drive the modern model
     { id: "rooms",       label: "Rooms",                       group: "Counts", kind: "count",  value: 1.1, pct: 0,
-      hint: "Rooms only. Hallways don't count, and four rooms is the baseline." },
+      hint: "Rooms only, not hallways. With square footage given, rooms nudge the price up or down a little." },
     { id: "pools",       label: "Pools",                       group: "Counts", kind: "tiered", value: 1.4, value2: 1.2,
       pct: 4, pctExtra: -2, hint: "A second pool eats the yard and costs value" },
     { id: "garages",     label: "Garages",                     group: "Counts", kind: "count",  value: 1.1,
@@ -160,7 +160,8 @@ const DEFAULT_RULES = {
     agentCommissionPct: 6,
     evictionWarnDays: 7, furnitureMinPct: 20, furnitureMaxPct: 50,
     locationShare: 70, featureFullTo: 25, featureTaper: 50, maxDepreciationPct: 30, boundGive: 25,
-    auctionsEnabled: 1, uniqueForcesAuction: 1, standardSqft: 2000, financingEnabled: 1
+    auctionsEnabled: 1, uniqueForcesAuction: 1, standardSqft: 2000, financingEnabled: 1,
+    roomStepPct: 2.5, roomCapPct: 10
   }
 };
 
@@ -723,7 +724,17 @@ function appraiseModern(f) {
     Math.min(0, rawFeaturePct);
   const featureValue = base * featurePct / 100;
   const flatValue = flatFeatures.reduce((sum, x) => sum + x.flat, 0);
-  const beforePenalties = locationValue + roomValue + featureValue + flatValue;
+  // Rooms against the size: a house with more rooms than usual for its square
+  // footage is worth a little more, fewer a little less. Size itself still
+  // comes from square footage, so space is never counted twice.
+  let typicalRooms = 0, layoutPct = 0, layoutValue = 0;
+  if (sqft && rooms) {
+    typicalRooms = Math.max(1, Math.round(sqft * 4 / stdSqft));
+    const cap = Math.max(0, +P.roomCapPct || 0);
+    layoutPct = Math.max(-cap, Math.min(cap, (rooms - typicalRooms) * (+P.roomStepPct || 0)));
+    layoutValue = base * layoutPct / 100;
+  }
+  const beforePenalties = locationValue + roomValue + layoutValue + featureValue + flatValue;
 
   const rawPenaltyMultiplier = penalties.reduce((mult, x) => mult * (1 - x.pct / 100), 1);
   const rawDepreciationPct = (1 - rawPenaltyMultiplier) * 100;
@@ -755,6 +766,7 @@ function appraiseModern(f) {
   if (z.unique && P.auctionsEnabled && P.uniqueForcesAuction) auctionWhy.push("estate");
 
   return { model: "modern", zone: z, base, rooms, sqft, stdSqft, locationValue, roomUnitValue, roomValue,
+    typicalRooms, layoutPct, layoutValue,
     features, pctFeatures, flatFeatures, rawFeaturePct, featurePct, featureValue, flatValue,
     beforePenalties, penalties,
     rawDepreciationPct, depreciationPct, penaltyMultiplier, beforeBounds, floor, ceiling,
@@ -1287,6 +1299,9 @@ function priceFactors(r) {
   else add(r.rooms > 4 ? "More rooms" : "Fewer rooms", sizeDelta,
     r.rooms + " room" + (r.rooms === 1 ? "" : "s") + ", no square footage given");
 
+  if (r.layoutValue) add(r.rooms > r.typicalRooms ? "More rooms than usual" : "Fewer rooms than usual", r.layoutValue,
+    r.rooms + " room" + (r.rooms === 1 ? "" : "s") + ", where about " + r.typicalRooms + " is typical for this size");
+
   // features: positives share the tapered total, so a long list doesn't run away
   const pos = r.pctFeatures.filter(x => x.pct > 0).reduce((a, x) => a + x.pct, 0);
   const posScale = pos ? taperFeatures(pos, P.featureFullTo, P.featureTaper / 100) / pos : 1;
@@ -1376,6 +1391,9 @@ function renderResult() {
         ? 'Size value (' + r.sqft.toLocaleString() + ' sq ft, standard ' + r.stdSqft.toLocaleString() + ')'
         : 'Size value (' + r.rooms + ' room' + (r.rooms === 1 ? "" : "s") + ', no sq ft given)') +
       '</td><td>' + money(r.roomValue) + '</td></tr>');
+    if (r.layoutValue)
+      rows.push('<tr><td>Room count (' + r.rooms + ' against ' + r.typicalRooms + ' typical, ' +
+        (r.layoutPct > 0 ? "+" : "") + trim(r.layoutPct) + '% of base)</td><td>' + money(r.layoutValue) + '</td></tr>');
     r.features.forEach(x => rows.push('<tr class="dim"><td style="padding-left:10px">' + esc(x.label) +
       ' (+' + trim(x.pct) + '%)</td><td>' + money(r.base * x.pct / 100) + '</td></tr>'));
     if (r.rawFeaturePct > S.rules.policy.featureFullTo)
@@ -1428,7 +1446,9 @@ function renderResult() {
     parts.push("<p><strong>How it's priced.</strong> " + P.locationShare + "% of the " +
       esc(z.name) + " base is location value and never moves. The other " + (100 - P.locationShare) +
       "% scales with square footage, " + Number(P.standardSqft || 2000).toLocaleString() +
-      " sq ft being standard, and each extra stretch of space counts for less.</p>");
+      " sq ft being standard, and each extra stretch of space counts for less. Rooms add or take off " +
+      trim(P.roomStepPct) + "% of the base for each one above or below what\u2019s typical for the size, up to " +
+      trim(P.roomCapPct) + "%.</p>");
     parts.push("<p style='margin-top:7px'>Features add a percentage of the base on top. They count in full " +
       "up to +" + P.featureFullTo + "%, then at " + P.featureTaper + "% beyond that" +
       (r.rawFeaturePct > P.featureFullTo
@@ -2081,6 +2101,8 @@ const POLICY_FIELDS = [
   ["roundIncrement", "Asking prices round up to ($)"],
   ["locationShare", "Location share of base (%)"],
   ["standardSqft", "Standard home size (sq ft)"],
+  ["roomStepPct", "Each room above or below typical (%)"],
+  ["roomCapPct", "Most the room count can move it (%)"],
   ["featureFullTo", "Features count in full up to (%)"],
   ["featureTaper", "Weight of features beyond that (%)"],
   ["maxDepreciationPct", "Most that disclosures can take off (%)"],
@@ -2164,6 +2186,8 @@ function renderRules() {
     '<p class="note"><strong>How an appraisal is built.</strong> It starts from the zone base. ' + P.locationShare +
     '% of it is location and never moves. The rest scales with square footage, ' +
     Number(P.standardSqft || 2000).toLocaleString() + ' sq ft being a standard home. ' +
+    'Each room above or below what\u2019s typical for the size moves it ' + trim(P.roomStepPct) +
+    '% of base, up to ' + trim(P.roomCapPct) + '%. ' +
     'Features add a percentage of base on top, counting in full to +' + P.featureFullTo +
     '% and at ' + P.featureTaper + '% beyond that. Disclosures take value off, never more than ' +
     P.maxDepreciationPct + '% combined. Torture rooms, drug labs and panic rooms are kept off the ' +
