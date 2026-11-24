@@ -158,7 +158,7 @@ const DEFAULT_RULES = {
     agentCommissionPct: 6,
     evictionWarnDays: 7, furnitureMinPct: 20, furnitureMaxPct: 50,
     locationShare: 70, featureFullTo: 25, featureTaper: 50, maxDepreciationPct: 30, boundGive: 25,
-    auctionsEnabled: 1, uniqueForcesAuction: 1
+    auctionsEnabled: 1, uniqueForcesAuction: 1, standardSqft: 2000
   }
 };
 
@@ -530,7 +530,7 @@ function when(ts) {
    Appraisal engine — walks rules.mods and knows nothing else
    ============================================================ */
 function blankForm() {
-  return { address: "", zone: 13, appraisalModel: "modern", mods: { rooms: 4 }, specialPremium: 0,
+  return { address: "", zone: 13, appraisalModel: "modern", sqft: 0, mods: { rooms: 4 }, specialPremium: 0,
     boundsWaived: false, boundsReason: "", photos: [],
     furnitureCost: 0, furniturePct: 30, premiumPct: 0 };
 }
@@ -622,6 +622,14 @@ function entryCount(m, entry) {
   if (m.kind === "free") return Math.max(0, +(entry || {}).count || 0);
   return entry ? 1 : 0;
 }
+/* Size against a standard home: up to standard counts in full, the next
+   standard's worth at 70%, the next at 45%, anything beyond at 25%. */
+function sizeUnits(ratio) {
+  const r = Math.max(0, ratio);
+  return Math.min(r, 1) + Math.min(Math.max(r - 1, 0), 1) * .70 +
+    Math.min(Math.max(r - 2, 0), 1) * .45 + Math.max(r - 3, 0) * .25;
+}
+function sqftOf(f) { return Math.max(0, Math.round(+(f && f.sqft) || 0)); }
 function roomUnits(rooms) {
   const n = Math.max(0, rooms);
   return Math.min(n, 4) + Math.min(Math.max(n - 4, 0), 4) * .70 +
@@ -680,7 +688,11 @@ function appraiseModern(f) {
   const rooms = Math.max(0, +entries.rooms || 0);
   const locationValue = base * (P.locationShare / 100);
   const roomUnitValue = base * ((100 - P.locationShare) / 100) / 4;
-  const roomValue = roomUnitValue * roomUnits(rooms);
+  // Size comes from square footage; properties saved without it fall back to rooms.
+  const sqft = sqftOf(f), stdSqft = Math.max(1, +P.standardSqft || 2000);
+  const roomValue = sqft
+    ? base * ((100 - P.locationShare) / 100) * sizeUnits(sqft / stdSqft)
+    : roomUnitValue * roomUnits(rooms);
 
   (S.rules.mods || []).forEach(m => {
     if (m.requires && !entries[m.requires]) {
@@ -736,7 +748,7 @@ function appraiseModern(f) {
   if (list < appraisal) list = Math.ceil(appraisal / inc) * inc;
   if (z.unique && P.auctionsEnabled && P.uniqueForcesAuction) auctionWhy.push("estate");
 
-  return { model: "modern", zone: z, base, rooms, locationValue, roomUnitValue, roomValue,
+  return { model: "modern", zone: z, base, rooms, sqft, stdSqft, locationValue, roomUnitValue, roomValue,
     features, pctFeatures, flatFeatures, rawFeaturePct, featurePct, featureValue, flatValue,
     beforePenalties, penalties,
     rawDepreciationPct, depreciationPct, penaltyMultiplier, beforeBounds, floor, ceiling,
@@ -759,7 +771,7 @@ function listingCopy(f, r) {
   });
   const L = [];
   L.push("DYNASTY 8 — " + (f.address || "New listing"));
-  L.push(r.zone.name);
+  L.push(r.zone.name + (r.sqft ? " \u00b7 " + r.sqft.toLocaleString() + " sq ft" : ""));
   L.push("");
   L.push(feats.length ? feats.join(", ").replace(/^./, s => s.toUpperCase()) + "." : "Viewing by appointment.");
   L.push("");
@@ -881,8 +893,10 @@ function renderAppraiseForm() {
     '<div style="margin-bottom:9px"><span class="lab">Address or property name</span>' +
     '<input id="f_address" data-f="address" value="' + esc(F.address) +
     '" placeholder="e.g. 2044 North Conker Avenue"></div>' +
-    '<div class="grid2">' +
+    '<div class="grid3">' +
       '<div><span class="lab">Zone</span><select id="f_zone" data-f="zone">' + zoneOpts + '</select></div>' +
+      '<div><label class="lab" for="f_sqft">Square footage</label><input id="f_sqft" data-f="sqft" type="number" min="0" step="50" ' +
+        'inputmode="numeric" placeholder="e.g. 2,000" value="' + (sqftOf(F) || "") + '"></div>' +
       (roomsMod
         ? '<div><span class="lab">Rooms</span><input id="m_rooms" data-m="rooms" type="number" min="0" ' +
           'value="' + (+(F.mods || {}).rooms || 0) + '"></div>'
@@ -1271,8 +1285,10 @@ function renderResult() {
     rows.push('<tr class="sum"><td>Appraised, rounded down</td><td>' + money(r.appraisal) + '</td></tr>');
   } else {
     rows.push('<tr><td>Location value (' + S.rules.policy.locationShare + '%)</td><td>' + money(r.locationValue) + '</td></tr>');
-    rows.push('<tr><td>Room value (' + r.rooms + ' room' + (r.rooms === 1 ? "" : "s") + ')</td><td>' +
-      money(r.roomValue) + '</td></tr>');
+    rows.push('<tr><td>' + (r.sqft
+        ? 'Size value (' + r.sqft.toLocaleString() + ' sq ft, standard ' + r.stdSqft.toLocaleString() + ')'
+        : 'Size value (' + r.rooms + ' room' + (r.rooms === 1 ? "" : "s") + ', no sq ft given)') +
+      '</td><td>' + money(r.roomValue) + '</td></tr>');
     r.features.forEach(x => rows.push('<tr class="dim"><td style="padding-left:10px">' + esc(x.label) +
       ' (+' + trim(x.pct) + '%)</td><td>' + money(r.base * x.pct / 100) + '</td></tr>'));
     if (r.rawFeaturePct > S.rules.policy.featureFullTo)
@@ -1324,7 +1340,8 @@ function renderResult() {
   } else {
     parts.push("<p><strong>Modern model.</strong> " + P.locationShare + "% of the " +
       esc(z.name) + " base is location value and never moves. The other " + (100 - P.locationShare) +
-      "% scales with rooms, four being the baseline, and each further room counts for less.</p>");
+      "% scales with square footage, " + Number(P.standardSqft || 2000).toLocaleString() +
+      " sq ft being standard, and each extra stretch of space counts for less.</p>");
     parts.push("<p style='margin-top:7px'>Features add a percentage of the base on top \u2014 in full " +
       "up to +" + P.featureFullTo + "%, then at " + P.featureTaper + "% beyond that" +
       (r.rawFeaturePct > P.featureFullTo
@@ -1962,6 +1979,7 @@ function renderLoans() {
 const POLICY_FIELDS = [
   ["roundIncrement", "Asking prices round up to ($)"],
   ["locationShare", "Location share of base (%)"],
+  ["standardSqft", "Standard home size (sq ft)"],
   ["featureFullTo", "Features count in full up to (%)"],
   ["featureTaper", "Weight of features beyond that (%)"],
   ["maxDepreciationPct", "Most that disclosures can take off (%)"],
@@ -2054,7 +2072,8 @@ function renderRules() {
         '</div><div class="l">Ordinary market</div></div>' +
     '</div>' +
     '<p class="note"><strong>How an appraisal is built.</strong> It starts from the zone base. ' + P.locationShare +
-    '% of it is location and never moves; the rest scales with rooms, four being the baseline. ' +
+    '% of it is location and never moves; the rest scales with square footage, ' +
+    Number(P.standardSqft || 2000).toLocaleString() + ' sq ft being a standard home. ' +
     'Features add a percentage of base on top, counting in full to +' + P.featureFullTo +
     '% and at ' + P.featureTaper + '% beyond that. Disclosures take value off, never more than ' +
     P.maxDepreciationPct + '% combined. Torture rooms, drug labs and panic rooms are kept off the ' +
@@ -2402,11 +2421,11 @@ function csvCell(v) {
 }
 $("#btnCsv").onclick = () => {
   if (!S.properties.length) { toast("Nothing to write out yet."); return; }
-  const head = ["Address", "Zone", "Rooms", "Appraised", "Asking", "Sold for",
+  const head = ["Address", "Zone", "Sq ft", "Rooms", "Appraised", "Asking", "Sold for",
     "Status", "Client", "Photos", "Saved", "Notes"];
   const rows = S.properties.map(p => {
     const f = p.form || {}, mods = f.mods || {};
-    return [p.address, (zoneById(p.zone) || {}).name || "",
+    return [p.address, (zoneById(p.zone) || {}).name || "", sqftOf(f) || "",
       mods.rooms || 0, p.appraisal || 0, p.list || 0, p.soldFor == null ? "" : p.soldFor,
       p.status, (clientById(p.clientId) || {}).name || "", (f.photos || []).length,
       p.created ? new Date(p.created).toISOString().slice(0, 10) : "", p.notes || ""];

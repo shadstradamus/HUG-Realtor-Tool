@@ -1,8 +1,8 @@
 {
   "kind": "dynasty8-office-pack",
-  "version": 4,
+  "version": 5,
   "issued": "2026-11-24",
-  "note": "Realistic, affordable pricing: zone ranges reset around each zone price, asking prices round to $5,000, estates marked and priced honestly",
+  "note": "Size now comes from square footage (2,000 sq ft is a standard home); acreage removed",
   "schema": 9,
   "zones": [
     {
@@ -380,7 +380,7 @@
         "kind": "count",
         "value": 1.1,
         "pct": 0,
-        "hint": "Rooms only \u2014 hallways don't count. Four rooms is the baseline."
+        "hint": "Rooms only \u2014 hallways don't count."
       },
       {
         "id": "pools",
@@ -652,20 +652,6 @@
         "penaltyPct": 10,
         "hint": "Players are known to be robbed here",
         "outside": false
-      },
-      {
-        "id": "mtosdva1ibvjv",
-        "label": "Acres",
-        "kind": "count",
-        "group": "Property",
-        "hint": "",
-        "outside": false,
-        "forcesAuction": false,
-        "value": 1.5,
-        "pct": 50,
-        "pctExtra": 20,
-        "flat": 0,
-        "flatExtra": 0
       }
     ],
     "policy": {
@@ -683,7 +669,8 @@
       "boundGive": 25,
       "auctionsEnabled": 0,
       "uniqueForcesAuction": 0,
-      "agentCommissionPct": 9
+      "agentCommissionPct": 9,
+      "standardSqft": 2000
     }
   },
   "replaceZones": true,
