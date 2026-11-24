@@ -1,6 +1,6 @@
 {
   "kind": "dynasty8-office-pack",
-  "version": 13,
+  "version": 14,
   "issued": "2026-11-24",
   "note": "",
   "schema": 9,
@@ -301,7 +301,7 @@
     },
     {
       "id": 24,
-      "name": "Cayo Mansion",
+      "name": "The El Rubio Estate [Not For Sale]",
       "base": 2500000,
       "floor": 1950000,
       "ceiling": 4250000,
