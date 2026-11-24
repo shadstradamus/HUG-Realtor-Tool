@@ -92,18 +92,25 @@ async function openConsole() {
 
 /* What differs between this browser and what agencies currently get. */
 const ZONE_FIELDS = ["name", "base", "floor", "ceiling", "x", "y", "unique", "notForSale"];
+/* Only what changes a price counts. Blank, 0, false and missing are all "nothing",
+   and the order fields happen to be saved in doesn't matter. */
+const nv = v => (v === undefined || v === null || v === false || v === "" || v === 0 || v === "0") ? "" : String(v);
+const MOD_FIELDS = ["label", "kind", "group", "pct", "pctExtra", "flat", "flatExtra", "penaltyPct", "hint", "requires", "special", "forcesAuction"];
+const modKey = m => JSON.stringify(MOD_FIELDS.map(f => nv(m[f])).concat([(m.options || []).map(o => [nv(o.label), nv(o.pct), nv(o.flat)])]));
+const whKey = w => JSON.stringify([nv(w.label), nv(w.price), nv(w.tier)]);
 function draftChanges() {
   if (!PUBLISHED) return { count: S.zones.length, first: true, lines: [], items: [] };
   const items = [];   // { text, undo() }
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const zdiff = (p, z) => ZONE_FIELDS.filter(f => nv(p[f]) !== nv(z[f]));
   const pubZones = PUBLISHED.zones || [];
   const pub = {}; pubZones.forEach(z => { pub[z.id] = z; });
   const mine = {}; S.zones.forEach(z => { mine[z.id] = z; });
   S.zones.forEach(z => {
     const p = pub[z.id];
     if (!p) items.push({ text: "New zone: " + z.name, undo: () => { S.zones = S.zones.filter(x => x.id !== z.id); } });
-    else if (ZONE_FIELDS.some(f => String(p[f] ?? "") !== String(z[f] ?? ""))) {
-      const what = ZONE_FIELDS.filter(f => String(p[f] ?? "") !== String(z[f] ?? ""))
+    else if (zdiff(p, z).length) {
+      const what = zdiff(p, z)
         .map(f => ({ name: "name", base: "price", floor: "floor", ceiling: "ceiling", x: "map position", y: "map position",
                      unique: "estate", notForSale: "for sale" })[f]);
       items.push({ text: "Changed zone: " + z.name + " (" + Array.from(new Set(what)).join(", ") + ")",
@@ -119,7 +126,7 @@ function draftChanges() {
   (S.rules.mods || []).forEach(m => {
     const p = pm[m.id];
     if (!p) items.push({ text: "New multiplier: " + m.label, undo: () => { S.rules.mods = S.rules.mods.filter(x => x.id !== m.id); } });
-    else if (!same(m, p)) items.push({ text: "Changed multiplier: " + m.label,
+    else if (modKey(m) !== modKey(p)) items.push({ text: "Changed multiplier: " + m.label,
       undo: () => { const i = S.rules.mods.findIndex(x => x.id === m.id); if (i >= 0) S.rules.mods[i] = clone(p); } });
   });
   (pubRules.mods || []).forEach((m, idx) => { if (!mm[m.id]) items.push({ text: "Removed multiplier: " + m.label,
@@ -131,14 +138,14 @@ function draftChanges() {
 
   const label = k => { const f = (typeof POLICY_FIELDS !== "undefined" ? POLICY_FIELDS : []).find(x => x[0] === k); return f ? f[1] : k; };
   const keys = new Set(Object.keys(S.rules.policy).concat(Object.keys(pubRules.policy)));
-  Array.from(keys).filter(k => String(S.rules.policy[k]) !== String(pubRules.policy[k])).forEach(k =>
+  Array.from(keys).filter(k => nv(S.rules.policy[k]) !== nv(pubRules.policy[k])).forEach(k =>
     items.push({ text: "House rule: " + label(k) + " (" + (pubRules.policy[k] ?? "\u2014") + " \u2192 " + (S.rules.policy[k] ?? "\u2014") + ")",
       undo: () => { S.rules.policy[k] = pubRules.policy[k]; } }));
 
   const pw = {}; (PUBLISHED.warehouses || []).forEach(w => { pw[w.id] = w; });
   (S.warehouses || []).forEach(w => {
     const p = pw[w.id];
-    if (p && !same(w, p)) items.push({ text: "Warehouse: " + w.label + " (" + money(p.price) + " \u2192 " + money(w.price) + ")",
+    if (p && whKey(w) !== whKey(p)) items.push({ text: "Warehouse: " + w.label + " (" + money(p.price) + " \u2192 " + money(w.price) + ")",
       undo: () => { const i = S.warehouses.findIndex(x => x.id === w.id); if (i >= 0) S.warehouses[i] = clone(p); } });
   });
   return { count: items.length, first: false, lines: items.map(i => i.text), items };
