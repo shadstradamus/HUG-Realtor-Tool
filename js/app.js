@@ -912,7 +912,7 @@ function renderAppraiseForm() {
 
   const zoneOpts = S.zones.map(z =>
     '<option value="' + z.id + '"' + (String(F.zone) === String(z.id) ? " selected" : "") + '>' +
-    esc(z.name) + (z.unique ? " (Estate)" : "") + " \u00b7 " + money(z.base) + '</option>').join("");
+    esc(z.name) + (z.unique ? (z.notForSale ? " (Estate, not for sale)" : " (Estate)") : "") + " \u00b7 " + money(z.base) + '</option>').join("");
   const roomsMod = modById("rooms");
 
   /* the three things that move the number most, up top and always visible */
@@ -1369,9 +1369,12 @@ function renderResult() {
   const r = appraise(F);
   renderFactors(r);
   $("#outAppraisal").textContent = money(r.appraisal);
-  $("#outList").textContent = r.zone.name + (r.zone.unique ? " · Estate" : "") + " · asking " + money(r.list) + (r.furnAdd ? " incl. furniture" : "");
+  const nfs = isNotForSale(r.zone);
+  $("#outList").textContent = r.zone.name + (r.zone.unique ? " · Estate" : "") +
+    (nfs ? " · not for sale" : " · asking " + money(r.list) + (r.furnAdd ? " incl. furniture" : ""));
+  $("#btnSaveProp").disabled = nfs; $("#btnCopyAd").disabled = nfs;
 
-  let flags = "";
+  let flags = nfs ? '<div class="warn" style="margin-bottom:8px"><strong>Not for sale.</strong> The Department has taken this estate off the market. It can\u2019t be listed or saved.</div>' : "";
   if (r.auction) flags += '<div class="tip" style="margin-bottom:8px"><strong>Auction required:</strong> ' +
     esc(r.auctionWhy.join(", ")) + '.</div>';
   if (r.model === "modern" && r.specialUses.length)
@@ -1506,7 +1509,9 @@ function renderResult() {
   $("#outRules").innerHTML = parts.join("");
 }
 
+function isNotForSale(z) { return !!(z && z.unique && z.notForSale); }
 $("#btnCopyAd").onclick = () => {
+  if (isNotForSale(zoneById(F.zone))) { toast("This estate isn\u2019t for sale."); return; }
   const text = listingCopy(F, appraise(F));
   navigator.clipboard.writeText(text).then(
     () => toast("Listing post copied."),
@@ -1517,6 +1522,7 @@ $("#btnCopyAd").onclick = () => {
 
 $("#btnSaveProp").onclick = () => {
   if (!F.address.trim()) { toast("Give the property an address first."); return; }
+  if (isNotForSale(zoneById(F.zone))) { toast("This estate isn\u2019t for sale, so it can\u2019t be saved."); return; }
   const r = appraise(F);
   if (editingPropId) {
     const p = propById(editingPropId);
@@ -2213,7 +2219,7 @@ function renderRules() {
   $("#zoneTable").innerHTML = shown.length
     ? '<table class="data zonetable"><thead><tr><th>#</th><th>Zone</th>' +
       '<th class="num">Floor</th><th class="num">Base</th><th class="num">Ceiling</th>' +
-      '<th>Estate</th><th class="num">Saved</th><th></th></tr></thead><tbody>' +
+      '<th>Estate</th><th>Not for sale</th><th class="num">Saved</th><th></th></tr></thead><tbody>' +
       shown.map(z => {
         const n = S.properties.filter(p => String(p.zone) === String(z.id)).length;
         const bad = z.floor && z.ceiling && z.floor > z.ceiling;
@@ -2223,11 +2229,13 @@ function renderRules() {
           '<td class="num"><input data-z="' + z.id + '" data-f="base" type="number" value="' + z.base + '"></td>' +
           '<td class="num"><input data-z="' + z.id + '" data-f="ceiling" type="number" value="' + (z.ceiling || 0) + '"></td>' +
           '<td><input data-z="' + z.id + '" data-f="unique" type="checkbox"' + (z.unique ? " checked" : "") + '></td>' +
+          '<td><input data-z="' + z.id + '" data-f="notForSale" type="checkbox" aria-label="' + esc(z.name) + ' not for sale"' +
+            (z.notForSale ? " checked" : "") + (z.unique ? "" : " disabled title=\"Only estates can be taken off the market\"") + '></td>' +
           '<td class="num">' + n + '</td>' +
           '<td style="white-space:nowrap"><button class="btn sm" data-zmap="' + z.id + '">Map</button> ' +
           '<button class="btn sm danger icon" data-delzone="' + z.id + '" title="Delete zone" ' +
           'aria-label="Delete zone">' + ICON_TRASH + '</button></td></tr>' +
-          (bad ? '<tr class="rowbadnote"><td colspan="8" class="note">Floor is above the ceiling. ' +
+          (bad ? '<tr class="rowbadnote"><td colspan="9" class="note">Floor is above the ceiling. ' +
             'the ceiling is ignored until this is fixed.</td></tr>' : '');
       }).join("") + '</tbody></table>' +
       '<p class="note" style="margin-top:8px">Zones, prices and map positions are set by the HUG Regional Director ' +
@@ -2236,7 +2244,8 @@ function renderRules() {
 
   $$("#zoneTable [data-z]").forEach(el => el.onchange = () => {
     const z = zoneById(el.dataset.z), f = el.dataset.f;
-    z[f] = f === "unique" ? el.checked : (f === "name" || f === "real" ? el.value : +el.value);
+    z[f] = (f === "unique" || f === "notForSale") ? el.checked : (f === "name" || f === "real" ? el.value : +el.value);
+    if (f === "unique" && !el.checked) delete z.notForSale;   // only estates can be off the market
     save(); renderRules(); renderResult(); drawPins();
   });
   $$("#zoneTable [data-zmap]").forEach(b => b.onclick = () => {
@@ -3000,12 +3009,13 @@ function selectZone(id) {
   const P = S.rules.policy;
   const auctionNote = z.unique && P.auctionsEnabled && P.uniqueForcesAuction
     ? " \u00b7 estate, sold at auction" : (z.unique ? " \u00b7 estate" : "");
+  const nfsChip = isNotForSale(z) ? '<span class="chip flag" style="margin-left:6px">Not for sale</span>' : "";
 
   $("#mapInfo").hidden = false;
   $("#mapInfo").innerHTML =
     '<div class="row" style="align-items:flex-start"><h3 style="flex:1">' + esc(z.name) + '</h3>' +
     '<button class="btn sm icon" id="mapClose" title="Close" aria-label="Close">\u00d7</button></div>' +
-    '<div class="zoneprice">' + money(z.base) + '</div>' +
+    '<div class="zoneprice">' + money(z.base) + nfsChip + '</div>' +
     '<div class="note" style="margin-bottom:9px">Zone ' + z.id + auctionNote +
       (z.offshore ? " \u00b7 offshore" : "") + '</div>' +
     (MODE === "director" && (z.floor || z.ceiling)
@@ -3226,6 +3236,8 @@ function zoneModal(id, draft) {
     '<div style="margin-bottom:10px"><span class="lab">Name</span><input id="z_name" value="' + esc(z.name) + '" placeholder="e.g. Palomino Highlands"></div>' +
     '<label class="row" style="gap:6px"><input type="checkbox" id="z_uniq"' + (z.unique ? " checked" : "") +
       '> Estate</label>' +
+    '<label class="row" style="gap:6px;margin-top:6px"><input type="checkbox" id="z_nfs"' + (z.notForSale ? " checked" : "") +
+      '> Not for sale (estates only)</label>' +
     '<p class="note" style="margin-top:9px">Dropped at ' + z.x + ", " + z.y + " on the " +
       (z.offshore ? "Cayo Perico" : "Los Santos") + " map." + (id ? " Use Move pin to put it somewhere else." : "") + "</p>",
     [{ label: "Cancel", run: closeModal },
@@ -3237,6 +3249,8 @@ function zoneModal(id, draft) {
         const rec = { id: id || +$("#z_id", m).value, name, base: +$("#z_base", m).value || 0,
           floor, ceiling,
           x: z.x, y: z.y, unique: $("#z_uniq", m).checked };
+        if (rec.unique && $("#z_nfs", m).checked) rec.notForSale = true;
+        else if (id) delete zoneById(id).notForSale;
         if (z.offshore) rec.offshore = true;   // placed on the Cayo Perico map
         if (id) Object.assign(zoneById(id), rec);
         else {
@@ -3315,13 +3329,31 @@ function lockAgencyControls() {
     if (READ_ONLY_KEEP.has(el.id) || el.disabled) return;
     el.disabled = true;
   });
-  $$("#whTable [data-whp]").forEach(el => { if (!el.disabled) el.disabled = true; });
+  $$("#whTable [data-whp], #whTerms [data-wt]").forEach(el => { if (!el.disabled) el.disabled = true; });
 }
 if (MODE === "agency") {
   const mo = new MutationObserver(lockAgencyControls);
-  ["view-rules", "whTable"].forEach(id => { const el = document.getElementById(id); if (el) mo.observe(el, { childList: true, subtree: true }); });
+  ["view-rules", "whTable", "whTerms"].forEach(id => { const el = document.getElementById(id); if (el) mo.observe(el, { childList: true, subtree: true }); });
 }
 
+/* On phones the map's options fold away so they don't cover the map. */
+(function foldMapOptions() {
+  const hud = document.querySelector(".map-hud.tl"), jump = $("#mapJump");
+  if (!hud || !jump) return;
+  if (hud.firstElementChild) hud.firstElementChild.classList.add("hudkeep");
+  jump.classList.add("hudkeep");
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.className = "btn sm hudtoggle hudkeep";
+  jump.insertAdjacentElement("afterend", btn);
+  const paint = () => {
+    const folded = hud.classList.contains("folded");
+    btn.textContent = folded ? "Map options \u25be" : "Hide options \u25b4";
+    btn.setAttribute("aria-expanded", String(!folded));
+  };
+  btn.onclick = () => { hud.classList.toggle("folded"); paint(); };
+  if (window.matchMedia("(max-width: 760px)").matches) hud.classList.add("folded");
+  paint();
+})();
 refreshZoneList();
 renderAll();
 if (MODE === "agency") lockAgencyControls();

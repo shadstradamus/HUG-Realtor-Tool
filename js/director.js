@@ -89,7 +89,7 @@ async function openConsole() {
 }
 
 /* What differs between this browser and what agencies currently get. */
-const ZONE_FIELDS = ["name", "base", "floor", "ceiling", "x", "y", "unique"];
+const ZONE_FIELDS = ["name", "base", "floor", "ceiling", "x", "y", "unique", "notForSale"];
 function draftChanges() {
   if (!PUBLISHED) return { count: S.zones.length, first: true, lines: [] };
   const lines = [];
