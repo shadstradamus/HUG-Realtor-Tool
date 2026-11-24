@@ -1,6 +1,6 @@
 {
   "kind": "dynasty8-office-pack",
-  "version": 14,
+  "version": 15,
   "issued": "2026-11-24",
   "note": "",
   "schema": 9,
@@ -316,56 +316,56 @@
       "id": "compact_warehouse",
       "label": "Executive Lockup",
       "tier": "small",
-      "price": 250000,
+      "price": 185000,
       "interior": "Corrugated lockup, single roller door"
     },
     {
       "id": "standard_warehouse",
       "label": "Executive Depot",
       "tier": "small",
-      "price": 325000,
+      "price": 240000,
       "interior": "Fitted workshop with benches and cabinets"
     },
     {
       "id": "premium_warehouse",
       "label": "Executive Storage",
       "tier": "small",
-      "price": 425000,
+      "price": 315000,
       "interior": "Clean white hall, open floor"
     },
     {
       "id": "small_warehouse",
       "label": "Corporate Warehouse",
       "tier": "small",
-      "price": 600000,
+      "price": 415000,
       "interior": "Small cargo warehouse, two racking bays"
     },
     {
       "id": "medium_warehouse",
       "label": "Commercial Warehouse",
       "tier": "medium",
-      "price": 850000,
+      "price": 610000,
       "interior": "Medium cargo warehouse, rows of racking"
     },
     {
       "id": "large_warehouse",
       "label": "Large Warehouse",
       "tier": "xl",
-      "price": 1400000,
+      "price": 965000,
       "interior": "Large cargo warehouse, full racking aisles"
     },
     {
       "id": "car_garage",
       "label": "Enterprise Warehouse",
       "tier": "xl",
-      "price": 1700000,
+      "price": 1220000,
       "interior": "Vehicle warehouse with lifts and bays"
     },
     {
       "id": "xl_warehouse",
       "label": "Premier Warehouse",
       "tier": "xl",
-      "price": 2000000,
+      "price": 1470000,
       "interior": "Underground vehicle floor, multiple levels"
     }
   ],
@@ -667,7 +667,7 @@
       "boundGive": 25,
       "auctionsEnabled": 0,
       "uniqueForcesAuction": 0,
-      "agentCommissionPct": 9,
+      "agentCommissionPct": 3,
       "standardSqft": 2000,
       "financingEnabled": 0,
       "roomStepPct": 2.5,
