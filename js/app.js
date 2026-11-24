@@ -603,7 +603,7 @@ function appraiseLegacy(f) {
   if (list < appraisal) list = Math.ceil(appraisal / inc) * inc;
 
   if (z.unique && S.rules.policy.auctionsEnabled && S.rules.policy.uniqueForcesAuction)
-    auctionWhy.push("unique property");
+    auctionWhy.push("estate");
 
   return { model: "legacy", zone: z, base, inside, outside, insideProduct, outsideProduct, root,
     appraisal, furnAdd, furnPct, list, auction: auctionWhy.length > 0, auctionWhy, notes };
@@ -734,7 +734,7 @@ function appraiseModern(f) {
   const premium = Math.max(0, +f.premiumPct || 0) / 100;
   let list = Math.ceil((appraisal + furnAdd) * (1 + premium) / inc) * inc;
   if (list < appraisal) list = Math.ceil(appraisal / inc) * inc;
-  if (z.unique && P.auctionsEnabled && P.uniqueForcesAuction) auctionWhy.push("unique property");
+  if (z.unique && P.auctionsEnabled && P.uniqueForcesAuction) auctionWhy.push("estate");
 
   return { model: "modern", zone: z, base, rooms, locationValue, roomUnitValue, roomValue,
     features, pctFeatures, flatFeatures, rawFeaturePct, featurePct, featureValue, flatValue,
@@ -873,7 +873,7 @@ function renderAppraiseForm() {
 
   const zoneOpts = S.zones.map(z =>
     '<option value="' + z.id + '"' + (String(F.zone) === String(z.id) ? " selected" : "") + '>' +
-    esc(z.name) + " \u2014 " + money(z.base) + '</option>').join("");
+    esc(z.name) + (z.unique ? " (Estate)" : "") + " \u2014 " + money(z.base) + '</option>').join("");
   const roomsMod = modById("rooms");
 
   /* the three things that move the number most, up top and always visible */
@@ -1249,7 +1249,7 @@ function renderPhotoStrip() {
 function renderResult() {
   const r = appraise(F);
   $("#outAppraisal").textContent = money(r.appraisal);
-  $("#outList").textContent = r.zone.name + " · asking " + money(r.list) + (r.furnAdd ? " incl. furniture" : "");
+  $("#outList").textContent = r.zone.name + (r.zone.unique ? " · Estate" : "") + " · asking " + money(r.list) + (r.furnAdd ? " incl. furniture" : "");
 
   let flags = "";
   if (r.auction) flags += '<div class="tip" style="margin-bottom:8px"><strong>Auction required</strong> — ' +
@@ -1967,7 +1967,7 @@ const POLICY_FIELDS = [
   ["maxDepreciationPct", "Most that disclosures can take off (%)"],
   ["boundGive", "How much value past a zone bound still counts (%)"],
   ["auctionsEnabled", "Auctions are used on this server", "bool"],
-  ["uniqueForcesAuction", "Unique properties must go to auction", "bool"],
+  ["uniqueForcesAuction", "Estates must go to auction", "bool"],
   ["minDownPct", "Suggested downpayment (%)"],
   ["evictionWarnDays", "Eviction warning (days)"],
   ["furnitureMinPct", "Furniture uplift, lowest (%)"],
@@ -2060,7 +2060,7 @@ function renderRules() {
     P.maxDepreciationPct + '% combined. Torture rooms, drug labs and panic rooms are kept off the ' +
     'appraisal and quoted as a separate premium.</p>' +
     '<p class="note" style="margin-top:8px">' + (P.auctionsEnabled
-      ? 'Custom interiors, exotic features' + (P.uniqueForcesAuction ? ' and unique properties' : '') +
+      ? 'Custom interiors, exotic features' + (P.uniqueForcesAuction ? ' and estates' : '') +
         ' are flagged for auction.'
       : 'Auctions are switched off, so nothing is flagged for one.') + '</p>' +
     '<p class="note" style="margin-top:8px">Every zone has a floor and a ceiling. Neither is a wall: ' +
@@ -2075,7 +2075,7 @@ function renderRules() {
   $("#zoneTable").innerHTML = shown.length
     ? '<table class="data zonetable"><thead><tr><th>#</th><th>Zone</th>' +
       '<th class="num">Floor</th><th class="num">Base</th><th class="num">Ceiling</th>' +
-      '<th>Unique property</th><th class="num">Saved</th><th></th></tr></thead><tbody>' +
+      '<th>Estate</th><th class="num">Saved</th><th></th></tr></thead><tbody>' +
       shown.map(z => {
         const n = S.properties.filter(p => String(p.zone) === String(z.id)).length;
         const bad = z.floor && z.ceiling && z.floor > z.ceiling;
@@ -2842,7 +2842,7 @@ function selectZone(id) {
   const st = zoneStats(id);
   const P = S.rules.policy;
   const auctionNote = z.unique && P.auctionsEnabled && P.uniqueForcesAuction
-    ? " \u00b7 unique, sold at auction" : (z.unique ? " \u00b7 unique property" : "");
+    ? " \u00b7 estate, sold at auction" : (z.unique ? " \u00b7 estate" : "");
 
   $("#mapInfo").hidden = false;
   $("#mapInfo").innerHTML =
@@ -2975,7 +2975,7 @@ function renderLegend() {
     : m === "listings"
       ? '<i style="background:#23824f"></i>listed <i style="background:#c79a12;margin-left:7px"></i>auction ' +
         '<i style="background:#0a1f44;margin-left:7px"></i>sold'
-      : '<i style="background:#13568c"></i>zone <i style="background:#c79a12;margin-left:7px"></i>auction-only location';
+      : '<i style="background:#13568c"></i>zone <i style="background:#c79a12;margin-left:7px"></i>estate';
 }
 
 /* ============================================================
@@ -3006,7 +3006,7 @@ function zoneModal(id, draft) {
       '<div><span class="lab">Modern ceiling ($)</span><input id="z_ceiling" type="number" min="0" value="' + (+z.ceiling || 0) + '"></div></div>' +
     '<div style="margin-bottom:10px"><span class="lab">Name</span><input id="z_name" value="' + esc(z.name) + '" placeholder="e.g. Palomino Highlands"></div>' +
     '<label class="row" style="gap:6px"><input type="checkbox" id="z_uniq"' + (z.unique ? " checked" : "") +
-      '> Unique location — always sold at auction</label>' +
+      '> Estate</label>' +
     '<p class="note" style="margin-top:9px">Dropped at ' + z.x + ", " + z.y + " on the map. Drag it later with the move tool.</p>",
     [{ label: "Cancel", run: closeModal },
      { label: id ? "Save zone" : "Create zone", kind: "primary", run: () => {

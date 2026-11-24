@@ -1,8 +1,8 @@
 {
   "kind": "dynasty8-office-pack",
-  "version": 3,
+  "version": 4,
   "issued": "2026-11-24",
-  "note": "Official HUG zones, multipliers, house rules and warehouse prices",
+  "note": "Realistic, affordable pricing: zone ranges reset around each zone price, asking prices round to $5,000, estates marked and priced honestly",
   "schema": 9,
   "zones": [
     {
@@ -11,8 +11,8 @@
       "base": 50000,
       "x": 951,
       "y": 1642,
-      "floor": 50000,
-      "ceiling": 196000,
+      "floor": 38000,
+      "ceiling": 100000,
       "real": "South Central"
     },
     {
@@ -21,8 +21,8 @@
       "base": 180000,
       "x": 1134,
       "y": 1465,
-      "floor": 195000,
-      "ceiling": 425000,
+      "floor": 135000,
+      "ceiling": 360000,
       "real": "Silver Lake"
     },
     {
@@ -31,8 +31,8 @@
       "base": 255000,
       "x": 951,
       "y": 1513,
-      "floor": 213000,
-      "ceiling": 347000,
+      "floor": 191000,
+      "ceiling": 510000,
       "real": "Downtown LA"
     },
     {
@@ -41,8 +41,8 @@
       "base": 250000,
       "x": 834,
       "y": 1526,
-      "floor": 329000,
-      "ceiling": 481000,
+      "floor": 188000,
+      "ceiling": 500000,
       "real": "Palms / mid-city"
     },
     {
@@ -51,8 +51,8 @@
       "base": 295000,
       "x": 765,
       "y": 1559,
-      "floor": 121000,
-      "ceiling": 264000,
+      "floor": 221000,
+      "ceiling": 590000,
       "real": "Koreatown"
     },
     {
@@ -61,8 +61,8 @@
       "base": 525000,
       "x": 811,
       "y": 1421,
-      "floor": 741000,
-      "ceiling": 1620000,
+      "floor": 394000,
+      "ceiling": 1050000,
       "real": "Beverly Hills"
     },
     {
@@ -71,8 +71,8 @@
       "base": 300000,
       "x": 641,
       "y": 1481,
-      "floor": 254000,
-      "ceiling": 553000,
+      "floor": 225000,
+      "ceiling": 600000,
       "real": "Santa Monica"
     },
     {
@@ -81,8 +81,8 @@
       "base": 170000,
       "x": 691,
       "y": 1438,
-      "floor": 398000,
-      "ceiling": 867000,
+      "floor": 128000,
+      "ceiling": 340000,
       "real": "Brentwood"
     },
     {
@@ -91,8 +91,8 @@
       "base": 290000,
       "x": 983,
       "y": 1384,
-      "floor": 184000,
-      "ceiling": 387000,
+      "floor": 218000,
+      "ceiling": 580000,
       "real": "Hollywood"
     },
     {
@@ -101,19 +101,19 @@
       "base": 600000,
       "x": 848,
       "y": 1257,
-      "floor": 802000,
-      "ceiling": 1530000,
+      "floor": 450000,
+      "ceiling": 1200000,
       "real": "Hollywood Hills"
     },
     {
       "id": 11,
       "name": "Medrazzo Ranch",
-      "base": 800000,
+      "base": 1650000,
       "x": 1179,
       "y": 1185,
       "unique": true,
-      "floor": 1950000,
-      "ceiling": 4250000,
+      "floor": 1238000,
+      "ceiling": 3300000,
       "real": "Hidden Hills estate"
     },
     {
@@ -122,8 +122,8 @@
       "base": 220000,
       "x": 1078,
       "y": 1404,
-      "floor": 238000,
-      "ceiling": 519000,
+      "floor": 165000,
+      "ceiling": 440000,
       "real": "Los Feliz"
     },
     {
@@ -132,8 +132,8 @@
       "base": 225000,
       "x": 411,
       "y": 1193,
-      "floor": 601000,
-      "ceiling": 1310000,
+      "floor": 169000,
+      "ceiling": 450000,
       "real": "Malibu"
     },
     {
@@ -142,8 +142,8 @@
       "base": 50000,
       "x": 1004,
       "y": 902,
-      "floor": 35000,
-      "ceiling": 150000,
+      "floor": 38000,
+      "ceiling": 100000,
       "real": "Desert crossroads"
     },
     {
@@ -152,8 +152,8 @@
       "base": 30000,
       "x": 948,
       "y": 760,
-      "floor": 25000,
-      "ceiling": 100000,
+      "floor": 23000,
+      "ceiling": 60000,
       "real": "Slab City"
     },
     {
@@ -162,8 +162,8 @@
       "base": 120000,
       "x": 1249,
       "y": 760,
-      "floor": 75000,
-      "ceiling": 156000,
+      "floor": 90000,
+      "ceiling": 240000,
       "real": "Bombay Beach"
     },
     {
@@ -172,8 +172,8 @@
       "base": 40000,
       "x": 1328,
       "y": 951,
-      "floor": 25000,
-      "ceiling": 100000,
+      "floor": 30000,
+      "ceiling": 80000,
       "real": "Desert trailer park"
     },
     {
@@ -182,19 +182,19 @@
       "base": 75000,
       "x": 1119,
       "y": 916,
-      "floor": 75000,
-      "ceiling": 153000,
+      "floor": 56000,
+      "ceiling": 150000,
       "real": "Desert frontage"
     },
     {
       "id": 19,
       "name": "Lighthouse",
-      "base": 500000,
+      "base": 1600000,
       "x": 1569,
       "y": 644,
       "unique": true,
-      "floor": 1950000,
-      "ceiling": 4250000,
+      "floor": 1200000,
+      "ceiling": 3200000,
       "real": "Coastal landmark"
     },
     {
@@ -203,8 +203,8 @@
       "base": 100000,
       "x": 1238,
       "y": 571,
-      "floor": 7500,
-      "ceiling": 179000,
+      "floor": 75000,
+      "ceiling": 200000,
       "real": "Central Valley town"
     },
     {
@@ -213,8 +213,8 @@
       "base": 145000,
       "x": 1108,
       "y": 788,
-      "floor": 76000,
-      "ceiling": 167000,
+      "floor": 109000,
+      "ceiling": 290000,
       "real": "Salton Sea shore"
     },
     {
@@ -223,8 +223,8 @@
       "base": 180000,
       "x": 913,
       "y": 321,
-      "floor": 137000,
-      "ceiling": 298000,
+      "floor": 135000,
+      "ceiling": 360000,
       "real": "Morro Bay"
     },
     {
@@ -234,20 +234,20 @@
       "x": 1566,
       "y": 1611,
       "offshore": true,
-      "floor": 78000,
-      "ceiling": 170000,
+      "floor": 49000,
+      "ceiling": 130000,
       "real": "Island village"
     },
     {
       "id": 24,
       "name": "Cayo Mansion",
-      "base": 800006,
+      "base": 1650000,
       "x": 1566,
       "y": 1519,
       "offshore": true,
       "unique": true,
-      "floor": 1950000,
-      "ceiling": 4250000,
+      "floor": 1238000,
+      "ceiling": 3300000,
       "real": "Private island compound"
     },
     {
@@ -256,27 +256,27 @@
       "base": 85000,
       "x": 1122,
       "y": 1675,
-      "floor": 101000,
-      "ceiling": 221000,
+      "floor": 64000,
+      "ceiling": 170000,
       "real": "Boyle Heights"
     },
     {
       "id": 26,
       "name": "Farmhouse Grapeseed",
-      "base": 400000,
+      "base": 1550000,
       "x": 1329,
       "y": 567,
       "unique": true,
-      "floor": 1950000,
-      "ceiling": 4250000,
+      "floor": 1163000,
+      "ceiling": 3100000,
       "real": "Working ranch estate"
     },
     {
       "id": 27,
       "name": "Richman",
       "base": 250000,
-      "floor": 525000,
-      "ceiling": 1350000,
+      "floor": 188000,
+      "ceiling": 500000,
       "x": 709,
       "y": 1359,
       "unique": false
@@ -285,8 +285,8 @@
       "id": 28,
       "name": "Tongva",
       "base": 585000,
-      "floor": 852000,
-      "ceiling": 1860000,
+      "floor": 439000,
+      "ceiling": 1170000,
       "x": 605,
       "y": 1143,
       "unique": false
@@ -295,8 +295,8 @@
       "id": 29,
       "name": "Great Chapparal",
       "base": 185000,
-      "floor": 236000,
-      "ceiling": 565000,
+      "floor": 139000,
+      "ceiling": 370000,
       "x": 978,
       "y": 1080,
       "unique": false
@@ -305,8 +305,8 @@
       "id": 30,
       "name": "Vespucci",
       "base": 425000,
-      "floor": 535000,
-      "ceiling": 750000,
+      "floor": 319000,
+      "ceiling": 850000,
       "x": 721,
       "y": 1593,
       "unique": false
@@ -669,7 +669,7 @@
       }
     ],
     "policy": {
-      "roundIncrement": 25000,
+      "roundIncrement": 5000,
       "minDownPct": 20,
       "auctionDays": 7,
       "quietHours": 24,
