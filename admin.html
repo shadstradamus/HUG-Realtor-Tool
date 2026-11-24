@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700;900&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
-<link rel="stylesheet" href="css/hug.css?v=202611232333">
+<link rel="stylesheet" href="css/hug.css?v=202611232348">
 </head>
 <body data-mode="director">
 <div id="gate" hidden>
@@ -62,11 +62,13 @@
   <div id="editorBar">
     <strong>Director console</strong>
     <span id="edState">Signing in…</span>
-    <button class="btn sm" id="edPlace">Place new zone</button>
-    <button class="btn sm" id="edMove">Move zone pins</button>
-    <button class="btn sm" id="edDiscard">Discard draft</button>
-    <button class="btn sm primary" id="edPublish">Publish to all agencies</button>
-    <button class="btn sm" id="edDone">Sign out</button>
+    <div class="edbtns">
+      <button class="btn sm primary" id="edPublish">Publish to all agencies</button>
+      <button class="btn sm" id="edPlace" aria-pressed="false">Place new zone</button>
+      <button class="btn sm" id="edMove" aria-pressed="false">Move zone pins</button>
+      <button class="btn sm" id="edDiscard">Discard draft</button>
+      <button class="btn sm" id="edDone">Sign out</button>
+    </div>
   </div>
   <main>
 
@@ -381,8 +383,8 @@
 
 <div class="scrim" id="scrim"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="js/assets.js?v=202611232333"></script>
-<script src="js/app.js?v=202611232333"></script>
-<script src="js/director.js?v=202611232333"></script>
+<script src="js/assets.js?v=202611232348"></script>
+<script src="js/app.js?v=202611232348"></script>
+<script src="js/director.js?v=202611232348"></script>
 </body>
 </html>

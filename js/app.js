@@ -1600,7 +1600,7 @@ function propertyModal(id) {
     '. Saved ' + when(p.created) + '.</div>',
     [
       { label: ICON_TRASH + " Delete", kind: "danger icon-btn", run: () => {
-          if (!confirm("Delete " + p.address + "? Its loans stay in the file.")) return;
+          if (!confirm("Delete " + p.address + "?")) return;
           S.properties = S.properties.filter(x => x.id !== id); save(); closeModal(); renderAll(); toast("Property deleted.");
         } },
       { label: "Cancel", run: closeModal },
@@ -3012,14 +3012,21 @@ function renderLegend() {
 /* ============================================================
    Zone editor — only switched on in the Director console (admin.html)
    ============================================================ */
+// The draft count stays in the bar; the active map tool is shown on its button.
+function markTool(id) {
+  ["edPlace", "edMove"].forEach(b => { const el = $("#" + b); if (el) el.setAttribute("aria-pressed", String(b === id)); });
+}
+// Each map tool is a toggle: tap again to put it down.
 $("#edPlace").onclick = () => {
+  if (editorTool === "place") { editorTool = null; $("#mapWrap").classList.remove("placing"); markTool(null); drawPins(); return; }
   editorTool = "place"; $("#mapWrap").classList.add("placing");
-  $("#edState").textContent = "Click the map to drop a new zone.";
+  markTool("edPlace"); showView("map"); toast("Tap the map where the new zone goes. Tap the button again to stop.");
   drawPins();
 };
 $("#edMove").onclick = () => {
+  if (editorTool === "move") { editorTool = null; markTool(null); drawPins(); return; }
   editorTool = "move"; $("#mapWrap").classList.remove("placing");
-  $("#edState").textContent = "Drag any zone pin to reposition it.";
+  markTool("edMove"); showView("map"); toast("Drag any zone pin to move it. Tap the button again to stop.");
   drawPins();
 };
 function newZoneAt(x, y) {

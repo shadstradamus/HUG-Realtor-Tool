@@ -147,16 +147,15 @@ $("#edPublish").onclick = () => {
     '<div class="tip">Publishing as <strong>v' + next + '</strong>. Agencies get it the next time they open the MLS, usually within a few minutes.</div>' +
     '<div style="margin-top:12px"><strong style="font-size:14px">What will change</strong>' + list + '</div>' +
     '<div style="margin-top:12px"><span class="lab">Note for agencies (shown when it loads)</span>' +
-    '<input id="pb_note" placeholder="e.g. Sandy Shores rezoned, Cayo Perico now auction only"></div>' +
-    '<label class="row" style="gap:8px;margin-top:12px"><input type="checkbox" id="pb_replace"> Remove any zone an agency has that is not in this update</label>' +
-    '<label class="row" style="gap:8px;margin-top:8px"><input type="checkbox" id="pb_policy"> Let agencies keep their own house rule numbers</label>',
+    '<input id="pb_note" placeholder="e.g. Sandy Shores rezoned, Cayo Perico now auction only"></div>',
     [{ label: "Cancel", run: closeModal },
      { label: "Publish v" + next, kind: "primary", run: async () => {
         const btn = $(".foot .primary", m); btn.disabled = true; btn.textContent = "Publishing…";
         const pack = buildPack($("#pb_note", m).value.trim());
         pack.version = next;
-        pack.replaceZones = $("#pb_replace", m).checked;
-        pack.keepLocalPolicy = $("#pb_policy", m).checked;
+        // HUG's list is the whole list: agencies get exactly these zones and house rules
+        pack.replaceZones = true;
+        pack.keepLocalPolicy = false;
         pack.publishedBy = "HUG Regional Director";
         const err = await publishPack(pack);
         if (err) { btn.disabled = false; btn.textContent = "Publish v" + next; toast(err); return; }
