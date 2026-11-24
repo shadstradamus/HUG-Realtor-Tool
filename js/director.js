@@ -93,26 +93,88 @@ async function openConsole() {
 /* What differs between this browser and what agencies currently get. */
 const ZONE_FIELDS = ["name", "base", "floor", "ceiling", "x", "y", "unique", "notForSale"];
 function draftChanges() {
-  if (!PUBLISHED) return { count: S.zones.length, first: true, lines: [] };
-  const lines = [];
-  const pub = {}; (PUBLISHED.zones || []).forEach(z => { pub[z.id] = z; });
+  if (!PUBLISHED) return { count: S.zones.length, first: true, lines: [], items: [] };
+  const items = [];   // { text, undo() }
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const pubZones = PUBLISHED.zones || [];
+  const pub = {}; pubZones.forEach(z => { pub[z.id] = z; });
   const mine = {}; S.zones.forEach(z => { mine[z.id] = z; });
   S.zones.forEach(z => {
     const p = pub[z.id];
-    if (!p) lines.push("New zone: " + z.name);
-    else if (ZONE_FIELDS.some(f => String(p[f] ?? "") !== String(z[f] ?? ""))) lines.push("Changed zone: " + z.name);
+    if (!p) items.push({ text: "New zone: " + z.name, undo: () => { S.zones = S.zones.filter(x => x.id !== z.id); } });
+    else if (ZONE_FIELDS.some(f => String(p[f] ?? "") !== String(z[f] ?? ""))) {
+      const what = ZONE_FIELDS.filter(f => String(p[f] ?? "") !== String(z[f] ?? ""))
+        .map(f => ({ name: "name", base: "price", floor: "floor", ceiling: "ceiling", x: "map position", y: "map position",
+                     unique: "estate", notForSale: "for sale" })[f]);
+      items.push({ text: "Changed zone: " + z.name + " (" + Array.from(new Set(what)).join(", ") + ")",
+        undo: () => { const i = S.zones.findIndex(x => x.id === z.id); if (i >= 0) S.zones[i] = clone(p); } });
+    }
   });
-  (PUBLISHED.zones || []).forEach(z => { if (!mine[z.id]) lines.push("Removed zone: " + z.name); });
-  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  pubZones.forEach(z => { if (!mine[z.id]) items.push({ text: "Removed zone: " + z.name, undo: () => { S.zones.push(clone(z)); } }); });
+
   // settings added after a publish count as their defaults, not as edits
   const pubRules = deepFill(clone(PUBLISHED.rules || {}), clone(DEFAULT_RULES));
-  if (!same(S.rules.mods, pubRules.mods)) lines.push("Multipliers changed");
+  const pm = {}; (pubRules.mods || []).forEach(m => { pm[m.id] = m; });
+  const mm = {}; (S.rules.mods || []).forEach(m => { mm[m.id] = m; });
+  (S.rules.mods || []).forEach(m => {
+    const p = pm[m.id];
+    if (!p) items.push({ text: "New multiplier: " + m.label, undo: () => { S.rules.mods = S.rules.mods.filter(x => x.id !== m.id); } });
+    else if (!same(m, p)) items.push({ text: "Changed multiplier: " + m.label,
+      undo: () => { const i = S.rules.mods.findIndex(x => x.id === m.id); if (i >= 0) S.rules.mods[i] = clone(p); } });
+  });
+  (pubRules.mods || []).forEach((m, idx) => { if (!mm[m.id]) items.push({ text: "Removed multiplier: " + m.label,
+    undo: () => { S.rules.mods.splice(Math.min(idx, S.rules.mods.length), 0, clone(m)); } }); });
+  const order = (a) => (a || []).map(m => m.id).filter(id => pm[id] && mm[id]);
+  if (!same(order(S.rules.mods), order(pubRules.mods)) && items.every(i => i.text.indexOf("multiplier") < 0))
+    items.push({ text: "Multipliers reordered", undo: () => {
+      S.rules.mods.sort((a, b) => (pubRules.mods.findIndex(x => x.id === a.id) + 1 || 999) - (pubRules.mods.findIndex(x => x.id === b.id) + 1 || 999)); } });
+
+  const label = k => { const f = (typeof POLICY_FIELDS !== "undefined" ? POLICY_FIELDS : []).find(x => x[0] === k); return f ? f[1] : k; };
   const keys = new Set(Object.keys(S.rules.policy).concat(Object.keys(pubRules.policy)));
-  const changedRules = Array.from(keys).filter(k => String(S.rules.policy[k]) !== String(pubRules.policy[k]));
-  if (changedRules.length) lines.push("House rules changed");
-  if (!same(S.warehouses, PUBLISHED.warehouses)) lines.push("Warehouse prices changed");
-  return { count: lines.length, first: false, lines };
+  Array.from(keys).filter(k => String(S.rules.policy[k]) !== String(pubRules.policy[k])).forEach(k =>
+    items.push({ text: "House rule: " + label(k) + " (" + (pubRules.policy[k] ?? "\u2014") + " \u2192 " + (S.rules.policy[k] ?? "\u2014") + ")",
+      undo: () => { S.rules.policy[k] = pubRules.policy[k]; } }));
+
+  const pw = {}; (PUBLISHED.warehouses || []).forEach(w => { pw[w.id] = w; });
+  (S.warehouses || []).forEach(w => {
+    const p = pw[w.id];
+    if (p && !same(w, p)) items.push({ text: "Warehouse: " + w.label + " (" + money(p.price) + " \u2192 " + money(w.price) + ")",
+      undo: () => { const i = S.warehouses.findIndex(x => x.id === w.id); if (i >= 0) S.warehouses[i] = clone(p); } });
+  });
+  return { count: items.length, first: false, lines: items.map(i => i.text), items };
 }
+
+/* Undo one change, then redraw everything that shows rules. */
+function undoChange(item) {
+  item.undo();
+  save(); renderAll(); updateDraft();
+  toast("Undone: " + item.text.replace(/ \(.*\)$/, "") + ".");
+}
+function changesListHTML(d) {
+  return '<ul class="changes">' + d.items.map((it, i) =>
+    '<li><span>' + esc(it.text) + '</span><button class="btn sm" data-undo="' + i + '">Undo</button></li>').join("") + '</ul>';
+}
+function bindUndo(m, after) {
+  $$("[data-undo]", m).forEach(b => b.onclick = () => {
+    const d = draftChanges(); const it = d.items[+b.dataset.undo];
+    if (it) undoChange(it);
+    after();
+  });
+}
+function showChanges() {
+  const d = draftChanges();
+  if (d.first) { toast("Nothing has been published yet, so everything here goes out on the first publish."); return; }
+  if (!d.count) { toast("No unpublished changes."); return; }
+  const m = openModal("Unpublished changes",
+    '<p class="note" style="margin:0 0 8px">Undo anything you don\u2019t want before you publish. Agencies won\u2019t see any of this until then.</p>' +
+    changesListHTML(d),
+    [{ label: "Undo all", kind: "danger", run: () => { closeModal(); $("#edDiscard").click(); } },
+     { label: "Done", kind: "primary", run: closeModal }]);
+  bindUndo(m, () => { closeModal(); if (draftChanges().count) showChanges(); });
+}
+$("#edState").addEventListener("click", showChanges);
+$("#edState").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.currentTarget.classList.contains("clickable")) { e.preventDefault(); showChanges(); } });
+
 function updateDraft() {
   if (!editorOn) return;
   const d = draftChanges();
@@ -122,6 +184,11 @@ function updateDraft() {
     : d.count ? d.count + (d.count === 1 ? " unpublished change. " : " unpublished changes. ") + live
               : "No unpublished changes. " + live;
   $("#edPublish").classList.toggle("primary", d.first || d.count > 0);
+  const st = $("#edState");
+  st.classList.toggle("clickable", d.count > 0 && !d.first);
+  st.setAttribute("role", d.count > 0 && !d.first ? "button" : "status");
+  st.tabIndex = d.count > 0 && !d.first ? 0 : -1;
+  if (d.count > 0 && !d.first) st.textContent += " Review or undo \u203a";
 }
 let draftTimer = null;
 const baseWrite = Store.write;
@@ -140,9 +207,8 @@ function toBase64(str) {
 $("#edPublish").onclick = () => {
   const d = draftChanges();
   const next = Math.max(S.packVersion || 0, PUBLISHED ? PUBLISHED.version : 0) + 1;
-  const list = d.lines.length
-    ? '<ul class="note" style="margin:8px 0 0 18px;padding:0">' + d.lines.slice(0, 12).map(l => '<li>' + esc(l) + '</li>').join("") +
-      (d.lines.length > 12 ? '<li>and ' + (d.lines.length - 12) + ' more</li>' : '') + '</ul>'
+  const list = d.items && d.items.length
+    ? changesListHTML(d)
     : (d.first ? '<p class="note">First publish: every zone, multiplier, house rule and warehouse price goes out.</p>'
                : '<p class="note">Nothing differs from what agencies already have. You can still republish.</p>');
   const m = openModal("Publish to all agencies",
@@ -173,6 +239,7 @@ $("#edPublish").onclick = () => {
         PUBLISHED = pack; save(); closeModal(); renderData(); updateDraft(); renderHistory();
         toast("Published v" + pack.version + ". Agencies get it the next time they open the MLS.");
       } }]);
+  bindUndo(m, () => { closeModal(); $("#edPublish").click(); });
 };
 async function publishPack(pack) {
   const cur = await gh("GET", "/contents/" + GH.path + "?ref=" + GH.branch);
