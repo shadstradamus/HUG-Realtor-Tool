@@ -1,275 +1,275 @@
 {
   "kind": "dynasty8-office-pack",
-  "version": 5,
+  "version": 6,
   "issued": "2026-11-24",
-  "note": "Size now comes from square footage (2,000 sq ft is a standard home); acreage removed",
+  "note": "Fixes",
   "schema": 9,
   "zones": [
-    {
-      "id": 1,
-      "name": "South Los Santos",
-      "base": 50000,
-      "x": 951,
-      "y": 1642,
-      "floor": 38000,
-      "ceiling": 100000,
-      "real": "South Central"
-    },
-    {
-      "id": 2,
-      "name": "Mirror Park",
-      "base": 180000,
-      "x": 1134,
-      "y": 1465,
-      "floor": 135000,
-      "ceiling": 360000,
-      "real": "Silver Lake"
-    },
-    {
-      "id": 3,
-      "name": "Downtown",
-      "base": 255000,
-      "x": 951,
-      "y": 1513,
-      "floor": 191000,
-      "ceiling": 510000,
-      "real": "Downtown LA"
-    },
-    {
-      "id": 4,
-      "name": "Little Seoul",
-      "base": 250000,
-      "x": 834,
-      "y": 1526,
-      "floor": 188000,
-      "ceiling": 500000,
-      "real": "Palms / mid-city"
-    },
-    {
-      "id": 5,
-      "name": "Vespucci Canals",
-      "base": 295000,
-      "x": 765,
-      "y": 1559,
-      "floor": 221000,
-      "ceiling": 590000,
-      "real": "Koreatown"
-    },
-    {
-      "id": 6,
-      "name": "Rockford Hills",
-      "base": 525000,
-      "x": 811,
-      "y": 1421,
-      "floor": 394000,
-      "ceiling": 1050000,
-      "real": "Beverly Hills"
-    },
-    {
-      "id": 7,
-      "name": "Del Perro",
-      "base": 300000,
-      "x": 641,
-      "y": 1481,
-      "floor": 225000,
-      "ceiling": 600000,
-      "real": "Santa Monica"
-    },
-    {
-      "id": 8,
-      "name": "Morningwood",
-      "base": 170000,
-      "x": 691,
-      "y": 1438,
-      "floor": 128000,
-      "ceiling": 340000,
-      "real": "Brentwood"
-    },
-    {
-      "id": 9,
-      "name": "Vinewood",
-      "base": 290000,
-      "x": 983,
-      "y": 1384,
-      "floor": 218000,
-      "ceiling": 580000,
-      "real": "Hollywood"
-    },
-    {
-      "id": 10,
-      "name": "Vinewood Hills",
-      "base": 600000,
-      "x": 848,
-      "y": 1257,
-      "floor": 450000,
-      "ceiling": 1200000,
-      "real": "Hollywood Hills"
-    },
-    {
-      "id": 11,
-      "name": "Medrazzo Ranch",
-      "base": 1650000,
-      "x": 1179,
-      "y": 1185,
-      "unique": true,
-      "floor": 1238000,
-      "ceiling": 3300000,
-      "real": "Hidden Hills estate"
-    },
-    {
-      "id": 12,
-      "name": "Upper Mirror Park",
-      "base": 220000,
-      "x": 1078,
-      "y": 1404,
-      "floor": 165000,
-      "ceiling": 440000,
-      "real": "Los Feliz"
-    },
-    {
-      "id": 13,
-      "name": "Chumash",
-      "base": 225000,
-      "x": 411,
-      "y": 1193,
-      "floor": 169000,
-      "ceiling": 450000,
-      "real": "Malibu"
-    },
-    {
-      "id": 14,
-      "name": "Harmony",
-      "base": 50000,
-      "x": 1004,
-      "y": 902,
-      "floor": 38000,
-      "ceiling": 100000,
-      "real": "Desert crossroads"
-    },
     {
       "id": 15,
       "name": "Stab City",
       "base": 30000,
-      "x": 948,
-      "y": 760,
       "floor": 23000,
       "ceiling": 60000,
-      "real": "Slab City"
-    },
-    {
-      "id": 16,
-      "name": "Sandy Shores",
-      "base": 120000,
-      "x": 1249,
+      "x": 948,
       "y": 760,
-      "floor": 90000,
-      "ceiling": 240000,
-      "real": "Bombay Beach"
+      "real": "Slab City"
     },
     {
       "id": 17,
       "name": "Wind Farm Trailer Park",
       "base": 40000,
-      "x": 1328,
-      "y": 951,
       "floor": 30000,
       "ceiling": 80000,
+      "x": 1328,
+      "y": 951,
       "real": "Desert trailer park"
     },
     {
       "id": 18,
       "name": "Senora Freeway",
       "base": 75000,
-      "x": 1119,
-      "y": 916,
       "floor": 56000,
       "ceiling": 150000,
+      "x": 1119,
+      "y": 916,
       "real": "Desert frontage"
     },
     {
-      "id": 19,
-      "name": "Lighthouse",
-      "base": 1600000,
-      "x": 1569,
-      "y": 644,
-      "unique": true,
-      "floor": 1200000,
-      "ceiling": 3200000,
-      "real": "Coastal landmark"
+      "id": 16,
+      "name": "Sandy Shores",
+      "base": 120000,
+      "floor": 90000,
+      "ceiling": 240000,
+      "x": 1249,
+      "y": 760,
+      "real": "Bombay Beach"
     },
     {
-      "id": 20,
-      "name": "Grapeseed",
-      "base": 100000,
-      "x": 1238,
-      "y": 571,
-      "floor": 75000,
-      "ceiling": 200000,
-      "real": "Central Valley town"
+      "id": 14,
+      "name": "Harmony",
+      "base": 50000,
+      "floor": 38000,
+      "ceiling": 100000,
+      "x": 1004,
+      "y": 902,
+      "real": "Desert crossroads"
     },
     {
       "id": 21,
       "name": "Alamo",
       "base": 145000,
-      "x": 1108,
-      "y": 788,
       "floor": 109000,
       "ceiling": 290000,
+      "x": 1108,
+      "y": 788,
       "real": "Salton Sea shore"
-    },
-    {
-      "id": 22,
-      "name": "Paleto Bay",
-      "base": 180000,
-      "x": 913,
-      "y": 321,
-      "floor": 135000,
-      "ceiling": 360000,
-      "real": "Morro Bay"
     },
     {
       "id": 23,
       "name": "Cayo Perico",
       "base": 65000,
+      "floor": 49000,
+      "ceiling": 130000,
       "x": 1566,
       "y": 1611,
       "offshore": true,
-      "floor": 49000,
-      "ceiling": 130000,
       "real": "Island village"
     },
     {
-      "id": 24,
-      "name": "Cayo Mansion",
-      "base": 1650000,
-      "x": 1566,
-      "y": 1519,
-      "offshore": true,
-      "unique": true,
-      "floor": 1238000,
-      "ceiling": 3300000,
-      "real": "Private island compound"
+      "id": 20,
+      "name": "Grapeseed",
+      "base": 100000,
+      "floor": 75000,
+      "ceiling": 200000,
+      "x": 1238,
+      "y": 571,
+      "real": "Central Valley town"
+    },
+    {
+      "id": 1,
+      "name": "South Los Santos",
+      "base": 50000,
+      "floor": 38000,
+      "ceiling": 100000,
+      "x": 951,
+      "y": 1642,
+      "real": "South Central"
     },
     {
       "id": 25,
       "name": "East Los Santos",
       "base": 85000,
-      "x": 1122,
-      "y": 1675,
       "floor": 64000,
       "ceiling": 170000,
+      "x": 1122,
+      "y": 1675,
       "real": "Boyle Heights"
+    },
+    {
+      "id": 3,
+      "name": "Downtown",
+      "base": 255000,
+      "floor": 191000,
+      "ceiling": 510000,
+      "x": 951,
+      "y": 1513,
+      "real": "Downtown LA"
+    },
+    {
+      "id": 5,
+      "name": "Vespucci Canals",
+      "base": 295000,
+      "floor": 221000,
+      "ceiling": 590000,
+      "x": 765,
+      "y": 1559,
+      "real": "Koreatown"
+    },
+    {
+      "id": 4,
+      "name": "Little Seoul",
+      "base": 250000,
+      "floor": 188000,
+      "ceiling": 500000,
+      "x": 834,
+      "y": 1526,
+      "real": "Palms / mid-city"
+    },
+    {
+      "id": 22,
+      "name": "Paleto Bay",
+      "base": 180000,
+      "floor": 135000,
+      "ceiling": 360000,
+      "x": 913,
+      "y": 321,
+      "real": "Morro Bay"
+    },
+    {
+      "id": 9,
+      "name": "Vinewood",
+      "base": 290000,
+      "floor": 218000,
+      "ceiling": 580000,
+      "x": 983,
+      "y": 1384,
+      "real": "Hollywood"
+    },
+    {
+      "id": 2,
+      "name": "Mirror Park",
+      "base": 180000,
+      "floor": 135000,
+      "ceiling": 360000,
+      "x": 1134,
+      "y": 1465,
+      "real": "Silver Lake"
+    },
+    {
+      "id": 12,
+      "name": "Upper Mirror Park",
+      "base": 220000,
+      "floor": 165000,
+      "ceiling": 440000,
+      "x": 1078,
+      "y": 1404,
+      "real": "Los Feliz"
+    },
+    {
+      "id": 7,
+      "name": "Del Perro",
+      "base": 300000,
+      "floor": 225000,
+      "ceiling": 600000,
+      "x": 641,
+      "y": 1481,
+      "real": "Santa Monica"
+    },
+    {
+      "id": 8,
+      "name": "Morningwood",
+      "base": 170000,
+      "floor": 128000,
+      "ceiling": 340000,
+      "x": 691,
+      "y": 1438,
+      "real": "Brentwood"
+    },
+    {
+      "id": 13,
+      "name": "Chumash",
+      "base": 225000,
+      "floor": 169000,
+      "ceiling": 450000,
+      "x": 411,
+      "y": 1193,
+      "real": "Malibu"
+    },
+    {
+      "id": 10,
+      "name": "Vinewood Hills",
+      "base": 600000,
+      "floor": 450000,
+      "ceiling": 1200000,
+      "x": 848,
+      "y": 1257,
+      "real": "Hollywood Hills"
+    },
+    {
+      "id": 6,
+      "name": "Rockford Hills",
+      "base": 525000,
+      "floor": 394000,
+      "ceiling": 1050000,
+      "x": 811,
+      "y": 1421,
+      "real": "Beverly Hills"
+    },
+    {
+      "id": 11,
+      "name": "Medrazzo Ranch",
+      "base": 1650000,
+      "floor": 1238000,
+      "ceiling": 3300000,
+      "x": 1179,
+      "y": 1185,
+      "unique": true,
+      "real": "Hidden Hills estate"
+    },
+    {
+      "id": 19,
+      "name": "Lighthouse",
+      "base": 1600000,
+      "floor": 1200000,
+      "ceiling": 3200000,
+      "x": 1569,
+      "y": 644,
+      "unique": true,
+      "real": "Coastal landmark"
     },
     {
       "id": 26,
       "name": "Farmhouse Grapeseed",
       "base": 1550000,
+      "floor": 1163000,
+      "ceiling": 3100000,
       "x": 1329,
       "y": 567,
       "unique": true,
-      "floor": 1163000,
-      "ceiling": 3100000,
       "real": "Working ranch estate"
+    },
+    {
+      "id": 24,
+      "name": "Cayo Mansion",
+      "base": 1650000,
+      "floor": 1238000,
+      "ceiling": 3300000,
+      "x": 1566,
+      "y": 1519,
+      "offshore": true,
+      "unique": true,
+      "real": "Private island compound"
     },
     {
       "id": 27,
@@ -380,7 +380,7 @@
         "kind": "count",
         "value": 1.1,
         "pct": 0,
-        "hint": "Rooms only \u2014 hallways don't count."
+        "hint": "Rooms only — hallways don't count."
       },
       {
         "id": "pools",
@@ -670,7 +670,8 @@
       "auctionsEnabled": 0,
       "uniqueForcesAuction": 0,
       "agentCommissionPct": 9,
-      "standardSqft": 2000
+      "standardSqft": 2000,
+      "financingEnabled": 0
     }
   },
   "replaceZones": true,
