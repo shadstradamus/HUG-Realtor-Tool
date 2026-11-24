@@ -1,14 +1,14 @@
 {
   "kind": "dynasty8-office-pack",
-  "version": 1,
+  "version": 2,
   "issued": "2026-11-24",
-  "note": "Official zones and rules, taken from the Dynasty 8 tool",
+  "note": "Official zones and rules from the Dynasty 8 tool (Stab City corrected to $85,000)",
   "schema": 9,
   "zones": [
     {
       "id": 15,
       "name": "Stab City",
-      "base": 90000,
+      "base": 85000,
       "floor": 75000,
       "ceiling": 145000,
       "x": 1102,
