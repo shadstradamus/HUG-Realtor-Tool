@@ -1,8 +1,8 @@
 {
   "kind": "dynasty8-office-pack",
-  "version": 8,
+  "version": 9,
   "issued": "2026-11-24",
-  "note": "Cayo Perico zones moved onto the new Cayo Perico map",
+  "note": "",
   "schema": 9,
   "zones": [
     {
@@ -71,8 +71,8 @@
       "base": 65000,
       "floor": 49000,
       "ceiling": 130000,
-      "x": 1190,
-      "y": 1040,
+      "x": 1408,
+      "y": 1079,
       "offshore": true,
       "real": "Island village"
     },
@@ -380,7 +380,7 @@
         "kind": "count",
         "value": 1.1,
         "pct": 0,
-        "hint": "Rooms only \u2014 hallways don't count."
+        "hint": "Rooms only — hallways don't count."
       },
       {
         "id": "pools",
