@@ -1269,8 +1269,84 @@ function renderPhotoStrip() {
   });
 }
 
+/* What moved the price. Starts from a standard-size home in the zone and
+   lists each thing that pushed the appraisal up or down, in real dollars,
+   biggest first. The lines always add up to the appraised value. */
+function priceFactors(r) {
+  const P = S.rules.policy;
+  const out = [];
+  const add = (label, amt, why, kind) => { if (Math.abs(amt) >= 0.5) out.push({ label, amt, why: why || "", kind: kind || "factor" }); };
+
+  // size, against a standard home
+  const sizeDelta = r.roomValue - r.base * ((100 - P.locationShare) / 100);
+  const std = r.stdSqft.toLocaleString();
+  if (r.sqft) add(r.sqft >= r.stdSqft ? "More space" : "Less space", sizeDelta,
+    r.sqft.toLocaleString() + " sq ft, where a standard home is " + std);
+  else add(r.rooms > 4 ? "More rooms" : "Fewer rooms", sizeDelta,
+    r.rooms + " room" + (r.rooms === 1 ? "" : "s") + ", no square footage given");
+
+  // features: positives share the tapered total, so a long list doesn't run away
+  const pos = r.pctFeatures.filter(x => x.pct > 0).reduce((a, x) => a + x.pct, 0);
+  const posScale = pos ? taperFeatures(pos, P.featureFullTo, P.featureTaper / 100) / pos : 1;
+  r.pctFeatures.forEach(x => add(x.label, r.base * x.pct / 100 * (x.pct > 0 ? posScale : 1)));
+  r.flatFeatures.forEach(x => add(x.label, x.flat));
+
+  // disclosures: the combined loss, split by how hard each one hits
+  const lost = r.beforePenalties * (1 - r.penaltyMultiplier);
+  const w = r.penalties.map(x => -Math.log(Math.max(0.01, 1 - x.pct / 100)));
+  const wSum = w.reduce((a, b) => a + b, 0);
+  r.penalties.forEach((x, i) => add(x.label, wSum ? -lost * w[i] / wSum : 0, "Disclosed"));
+
+  out.sort((a, b) => Math.abs(b.amt) - Math.abs(a.amt));
+
+  // the zone's range comes after everything else
+  const band = r.residential - r.beforeBounds;
+  if (band < 0) add("Above the " + r.zone.name + " range", band,
+    "Value past " + money(r.ceiling) + " counts for less here", "band");
+  if (band > 0) add("Below the " + r.zone.name + " range", band,
+    "Lifted toward the area's " + money(r.floor) + " minimum", "band");
+  add("Special-use premium", r.specialPremium, "Quoted for this buyer, set under Sale terms", "band");
+
+  // whole dollars that land exactly on the appraisal
+  const start = Math.round(r.base);
+  out.forEach(f => { f.amt = Math.round(f.amt); });
+  const gap = r.appraisal - start - out.reduce((a, f) => a + f.amt, 0);
+  if (gap && out.length) {
+    const big = out.reduce((m, f) => Math.abs(f.amt) > Math.abs(m.amt) ? f : m, out[0]);
+    big.amt += gap;
+  }
+  return { start, factors: out.filter(f => f.amt !== 0), gap: out.length ? 0 : gap };
+}
+
+function renderFactors(r) {
+  const pf = priceFactors(r);
+  const maxAbs = pf.factors.reduce((m, f) => Math.max(m, Math.abs(f.amt)), 0) || 1;
+  const signed = n => (n > 0 ? "+" : "\u2212") + money(Math.abs(n));
+  const rows = ['<tr class="start"><td>Standard home in ' + esc(r.zone.name) +
+    '<span class="why">' + (r.zone.unique ? "Estate area \u00b7 the" : "The") + ' starting price for this area</span></td>' +
+    '<td class="amt">' + money(pf.start + pf.gap) + '</td></tr>'];
+  if (!pf.factors.length)
+    rows.push('<tr><td colspan="2"><span class="why">Nothing on this property moves it off the standard price.</span></td></tr>');
+  pf.factors.forEach(f => rows.push('<tr class="' + (f.amt > 0 ? "up" : "down") + '"><td>' + esc(f.label) +
+    (f.why ? '<span class="why">' + esc(f.why) + '</span>' : '') +
+    '<span class="bar" style="width:' + Math.max(2, Math.round(Math.abs(f.amt) / maxAbs * 100)) + '%"></span></td>' +
+    '<td class="amt">' + signed(f.amt) + '</td></tr>'));
+  rows.push('<tr class="sum"><td>Appraised value</td><td class="amt">' + money(r.appraisal) + '</td></tr>');
+  if (r.furnAdd || r.list !== r.appraisal) {
+    if (r.furnAdd) rows.push('<tr class="after"><td>Furniture<span class="why">At cost plus ' + r.furnPct +
+      '%</span></td><td class="amt">+' + money(r.furnAdd) + '</td></tr>');
+    const prem = r.list - r.appraisal - r.furnAdd;
+    if (prem) rows.push('<tr class="after"><td>' + (F.premiumPct ? "Listing premium" : "Rounded up") +
+      '<span class="why">' + (F.premiumPct ? F.premiumPct + "% over, rounded up to the nearest " + money(S.rules.policy.roundIncrement)
+        : "To the nearest " + money(S.rules.policy.roundIncrement)) + '</span></td><td class="amt">+' + money(prem) + '</td></tr>');
+    rows.push('<tr class="sum"><td>Asking price</td><td class="amt">' + money(r.list) + '</td></tr>');
+  }
+  $("#outFactors").innerHTML = rows.join("");
+}
+
 function renderResult() {
   const r = appraise(F);
+  renderFactors(r);
   $("#outAppraisal").textContent = money(r.appraisal);
   $("#outList").textContent = r.zone.name + (r.zone.unique ? " · Estate" : "") + " · asking " + money(r.list) + (r.furnAdd ? " incl. furniture" : "");
 
