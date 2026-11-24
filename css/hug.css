@@ -358,6 +358,9 @@ body.gated .shell{visibility:hidden}
   .value-card .amt{font-size:33px}
   .row{gap:8px}
   .row>input,.row>select{max-width:none!important;flex:1 1 100%}
+  .row>input[type=checkbox],.row>input[type=radio]{flex:0 0 auto;width:24px}
+  label.row{flex-wrap:nowrap;align-items:flex-start}
+  label.row>input[type=checkbox]{margin-top:1px}
 
   /* tables reflow into cards */
   table.data thead{display:none}

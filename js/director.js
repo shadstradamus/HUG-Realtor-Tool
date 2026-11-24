@@ -102,8 +102,12 @@ function draftChanges() {
   });
   (PUBLISHED.zones || []).forEach(z => { if (!mine[z.id]) lines.push("Removed zone: " + z.name); });
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  if (!same(S.rules.mods, (PUBLISHED.rules || {}).mods)) lines.push("Multipliers changed");
-  if (!same(S.rules.policy, (PUBLISHED.rules || {}).policy)) lines.push("House rules changed");
+  // settings added after a publish count as their defaults, not as edits
+  const pubRules = deepFill(clone(PUBLISHED.rules || {}), clone(DEFAULT_RULES));
+  if (!same(S.rules.mods, pubRules.mods)) lines.push("Multipliers changed");
+  const keys = new Set(Object.keys(S.rules.policy).concat(Object.keys(pubRules.policy)));
+  const changedRules = Array.from(keys).filter(k => String(S.rules.policy[k]) !== String(pubRules.policy[k]));
+  if (changedRules.length) lines.push("House rules changed");
   if (!same(S.warehouses, PUBLISHED.warehouses)) lines.push("Warehouse prices changed");
   return { count: lines.length, first: false, lines };
 }
