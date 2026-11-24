@@ -25,6 +25,8 @@ const Shared = (function () {
   let list = [];
   let roster = [];
   let agencies = [];
+  let bans = [];        // director: everyone banned; others: their own ban, if any
+  const bannedMe = () => bans.some(b => b.owner === me());
   let loaded = false, problem = "", busy = false, again = false, timer = null;
   let showing = "mine";
 
@@ -115,11 +117,15 @@ const Shared = (function () {
   /* Send what changed since last time, and take down what was removed. */
   async function sync() {
     if (!ON || !profile || !profile.name) return;
+    if (bannedMe()) return;
     if (busy) { again = true; return; }
     busy = true;
     try {
       await session();
       if (pushed.owner !== me()) pushed = { owner: me(), sigs: {} };
+      // removed by the director, or a lifted ban: send everything again
+      if (loaded && !list.some(l => l.owner === me())) pushed.sigs = {};
+      if (loaded && !roster.some(r => r.owner === me())) pushed.registered = "";
       if (pushed.registered !== myRid() + "|" + profile.agency) {
         await register(); pushed.registered = myRid() + "|" + profile.agency; write(K.pushed, pushed);
       }
@@ -167,6 +173,7 @@ const Shared = (function () {
       list = (await api("listings?select=*&order=updated_at.desc&limit=2000")) || [];
       roster = (await api("realtors?select=*&order=name.asc&limit=1000")) || [];
       agencies = (await api("agencies?select=*&order=name.asc")) || [];
+      if (me()) bans = (await api("banned?select=*&order=banned_at.desc")) || [];
       paintAgencies();
       loaded = true; problem = "";
     } catch (e) { problem = e.message || String(e); }
@@ -281,7 +288,9 @@ const Shared = (function () {
           (profile.agency ? ' · ' + esc(profile.agency) : '')
         : 'No realtor name yet') +
       ' · <a href="#" id="pfWhoEdit">' + (profile && profile.name ? "Change" : "Add your name") + '</a>' +
-      (problem && ON ? ' <span class="drift" title="' + esc(problem) + '">· shared listings offline</span>' : '') + '</p>';
+      (problem && ON ? ' <span class="drift" title="' + esc(problem) + '">· shared listings offline</span>' : '') + '</p>' +
+      (bannedMe() && MODE !== "director" ? '<div class="warn" style="margin-top:8px"><strong>Your MLS access is suspended.</strong> ' +
+        'The Department of Housing and Urban Gentrification has banned this realtor from listing. Your listings are no longer shared.</div>' : '');
     $("#pfWhoEdit").onclick = e => { e.preventDefault(); askName(false); };
     $$("#pfScope button").forEach(b => b.onclick = () => {
       showing = b.dataset.scope;
@@ -296,14 +305,16 @@ const Shared = (function () {
   }
 
   const ago = iso => {
-    const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+    const t = Date.parse(iso); if (!t) return "just now";
+    const s = Math.max(0, (Date.now() - t) / 1000);
     if (s < 90) return "just now";
     if (s < 3600) return Math.round(s / 60) + " min ago";
     if (s < 86400) return Math.round(s / 3600) + " h ago";
     return Math.round(s / 86400) + " d ago";
   };
-  const whoOf = l => esc(l.agent || "Unnamed") +
-    '<div class="note">' + [l.realtor_id ? '<span class="rid">' + esc(l.realtor_id) + '</span>' : '', esc(l.agency || "")].filter(Boolean).join(" · ") + '</div>';
+  const whoOf = l => '<div class="who"' + (l.agency ? ' title="' + esc(l.agency) + '"' : '') + '><span class="whoname">' + esc(l.agent || "Unnamed") +
+    (mine(l) ? ' <span class="chip listed you">You</span>' : '') + '</span>' +
+    (l.realtor_id ? '<span class="rid">' + esc(l.realtor_id) + '</span>' : '') + '</div>';
   const mine = l => l.owner === me();
 
   function renderAllAgencies() {
@@ -352,7 +363,7 @@ const Shared = (function () {
           '<td>' + esc(z ? z.name : "—") + '</td>' +
           '<td class="num">' + money(l.status === "Sold" && l.sold_for ? l.sold_for : l.asking) + '</td>' +
           '<td>' + statusChip(l.status || "Draft") + '</td>' +
-          '<td>' + whoOf(l) + (mine(l) ? ' <span class="chip listed">You</span>' : '') + '</td>' +
+          '<td>' + whoOf(l) + '</td>' +
           '<td class="note">' + ago(l.updated_at) + '</td>' +
           '<td style="white-space:nowrap"><button class="btn sm" data-view-shared="' + esc(l.id) + '">View</button>' +
           (MODE === "director" && !mine(l) ? ' <button class="btn sm danger" data-take-down="' + esc(l.id) + '">Remove</button>' : '') +
@@ -361,6 +372,9 @@ const Shared = (function () {
     $("#pfTable").insertAdjacentHTML("beforeend", directoryHTML());
     $$("#pfTable [data-view-shared]").forEach(b => b.onclick = () => viewListing(b.dataset.viewShared));
     $$("#pfTable [data-take-down]").forEach(b => b.onclick = () => takeDown(b.dataset.takeDown));
+    $$("#pfTable [data-rm-realtor]").forEach(b => b.onclick = () => removeRealtor(b.dataset.rmRealtor));
+    $$("#pfTable [data-ban-realtor]").forEach(b => b.onclick = () => banRealtor(b.dataset.banRealtor));
+    $$("#pfTable [data-unban]").forEach(b => b.onclick = () => liftBan(b.dataset.unban));
     stampTables();
   }
 
@@ -386,6 +400,77 @@ const Shared = (function () {
       photoGrid((l.photos || []).map(u => ({ kind: "url", url: u }))),
       [{ label: "Close", run: closeModal }].concat(z ? [{ label: "Show on map", run: () => {
           closeModal(); S.ui.mode = "listings"; save(); showView("map"); selectZone(z.id); } }] : []));
+  }
+
+  /* Director: the ban list, shown above the directory. */
+  function bannedHTML() {
+    if (MODE !== "director" || !bans.length) return "";
+    return '<h3 class="dirhead">Banned realtors</h3><table class="data"><thead><tr><th>Realtor</th><th>Realtor ID</th>' +
+      '<th>Reason</th><th>Banned</th><th></th></tr></thead><tbody>' +
+      bans.map(b => '<tr><td data-l="Realtor"><strong>' + esc(b.name || "Unnamed") + '</strong></td>' +
+        '<td data-l="Realtor ID">' + (b.realtor_id ? '<span class="rid">' + esc(b.realtor_id) + '</span>' : '') + '</td>' +
+        '<td data-l="Reason">' + esc(b.reason || "\u2014") + '</td><td class="note" data-l="Banned">' + ago(b.banned_at) + '</td>' +
+        '<td><button class="btn sm" data-unban="' + esc(b.owner) + '">Lift ban</button></td></tr>').join("") + '</tbody></table>';
+  }
+  function banRealtor(owner) {
+    const r = roster.find(x => x.owner === owner); if (!r) return;
+    const theirs = list.filter(l => l.owner === owner).length;
+    openModal("Ban realtor",
+      '<p>Ban <strong>' + esc(r.name) + '</strong> (' + esc(r.realtor_id) + ') from the MLS?</p>' +
+      '<p class="note" style="margin:8px 0 10px">Their ' + theirs + ' shared listing' + (theirs === 1 ? '' : 's') + ' come down and they can\u2019t list again, ' +
+      'from this browser or under this name. You can lift the ban later.</p>' +
+      '<label><span class="lab">Reason (only the director sees it)</span><input id="banWhy" maxlength="200" placeholder="e.g. Unlicensed sales"></label>',
+      [{ label: "Cancel", run: closeModal },
+       { label: "Ban", kind: "danger", run: async m => {
+          const reason = $("#banWhy", m).value.trim(); closeModal();
+          try {
+            const made = await api("banned", { method: "POST", headers: { Prefer: "return=representation" },
+              body: JSON.stringify({ owner, realtor_id: r.realtor_id, name: r.name, reason }) });
+            if (!made || !made.length) throw new Error("");
+            await api("listings?owner=eq." + encodeURIComponent(owner), { method: "DELETE" });
+            await api("realtors?owner=eq." + encodeURIComponent(owner), { method: "DELETE" });
+            toast(r.name + " is banned from the MLS."); fetchAll();
+          } catch (e) {
+            toast(/row-level|permission|^$/i.test(e.message || "") ? "Not banned. This browser isn\u2019t on the director list yet; its ID is on the Records tab." : e.message);
+          }
+        } }]);
+  }
+  function liftBan(owner) {
+    const b = bans.find(x => x.owner === owner); if (!b) return;
+    openModal("Lift ban", '<p>Let <strong>' + esc(b.name || "this realtor") + '</strong> list on the MLS again?</p>' +
+      '<p class="note" style="margin-top:8px">Their listings come back the next time they open the MLS.</p>',
+      [{ label: "Keep the ban", run: closeModal }, { label: "Lift ban", kind: "primary", run: async () => {
+          closeModal();
+          try { await api("banned?owner=eq." + encodeURIComponent(owner), { method: "DELETE" }); toast("Ban lifted."); fetchAll(); }
+          catch (e) { toast(e.message || "Couldn\u2019t lift the ban."); }
+        } }]);
+  }
+
+  /* Director: take a realtor off the directory, and their shared listings with them. */
+  function removeRealtor(owner) {
+    const r = roster.find(x => x.owner === owner); if (!r) return;
+    const theirs = list.filter(l => l.owner === owner);
+    openModal("Remove realtor",
+      '<p>Remove <strong>' + esc(r.name) + '</strong> (' + esc(r.realtor_id) + ') from the realtor directory?</p>' +
+      (theirs.length ? '<label class="row" style="gap:8px;margin-top:10px"><input type="checkbox" id="rmListings" checked> ' +
+        'Also take down their ' + theirs.length + ' shared listing' + (theirs.length === 1 ? '' : 's') + '</label>' : '') +
+      '<p class="note" style="margin-top:8px">Their own browser keeps its copy. If they enter a new name or save again, they show up again.</p>',
+      [{ label: "Keep", run: closeModal },
+       { label: "Remove", kind: "danger", run: async m => {
+          const alsoListings = theirs.length && $("#rmListings", m) && $("#rmListings", m).checked;
+          closeModal();
+          try {
+            const gone = await api("realtors?owner=eq." + encodeURIComponent(owner),
+              { method: "DELETE", headers: { Prefer: "return=representation" } });
+            if (!gone || !gone.length) {
+              toast("Not removed. This browser isn\u2019t on the director list yet. Its ID is on the Records tab.");
+              return;
+            }
+            if (alsoListings) await api("listings?owner=eq." + encodeURIComponent(owner), { method: "DELETE" });
+            toast(r.name + " removed" + (alsoListings ? " with their listings." : "."));
+            fetchAll();
+          } catch (e) { toast(e.message || "Couldn\u2019t remove them."); }
+        } }]);
   }
 
   async function takeDown(id) {
@@ -423,7 +508,7 @@ const Shared = (function () {
   /* ---------- Records (director) ---------- */
   /* Every realtor on the MLS: name, ID, agency and what they have listed. */
   function directoryHTML() {
-    if (!roster.length) return "";
+    if (!roster.length) return bannedHTML();
     const rows = roster.map(r => {
       const theirs = list.filter(l => l.owner === r.owner);
       const live = theirs.filter(l => l.status === "Listed" || l.status === "Auction").length;
@@ -431,11 +516,14 @@ const Shared = (function () {
         '<td data-l="Realtor ID"><span class="rid">' + esc(r.realtor_id) + '</span></td>' +
         '<td data-l="Agency">' + esc(r.agency || "\u2014") + '</td>' +
         '<td class="num" data-l="Listings">' + theirs.length + '</td>' +
-        '<td class="num" data-l="On the market">' + live + '</td></tr>';
+        '<td class="num" data-l="On the market">' + live + '</td>' +
+        (MODE === "director" ? '<td>' + (r.owner === me() ? '' :
+          '<span class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn sm" data-rm-realtor="' + esc(r.owner) + '">Remove</button>' +
+          '<button class="btn sm danger" data-ban-realtor="' + esc(r.owner) + '">Ban</button></span>') + '</td>' : '') + '</tr>';
     }).join("");
-    return '<h3 class="dirhead">Realtor directory</h3>' +
+    return bannedHTML() + '<h3 class="dirhead">Realtor directory</h3>' +
       '<table class="data"><thead><tr><th>Realtor</th><th>Realtor ID</th><th>Agency</th><th class="num">Listings</th>' +
-      '<th class="num">On the market</th></tr></thead><tbody>' + rows + '</tbody></table>';
+      '<th class="num">On the market</th>' + (MODE === "director" ? '<th></th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table>';
   }
 
   function statusHTML() {
