@@ -2510,7 +2510,10 @@ function routeFile(file) {
     let parsed = null;
     try { parsed = JSON.parse(text); } catch (err) { parsed = null; }
     if (parsed && typeof parsed === "object") {
-      if (parsed.kind === "dynasty8-office-pack" || parsed.kind === "dynasty8-rules-pack") { applyPackFile(parsed); return; }
+      if (parsed.kind === "dynasty8-office-pack" || parsed.kind === "dynasty8-rules-pack") {
+        if (MODE !== "director") { toast("That is a rules file. Zones and rules come from HUG automatically."); return; }
+        applyPackFile(parsed); return;
+      }
       if (Array.isArray(parsed.properties) || Array.isArray(parsed.clients)) { applyBackupFile(parsed); return; }
       toast("That JSON is neither a backup nor a rules pack.");
       return;
@@ -2532,7 +2535,10 @@ function applyBackupFile(incoming) {
      { label: "Replace my data", kind: "primary", run: () => {
         const blobs = incoming.photoBlobs || {};
         delete incoming.photoBlobs;
-        S = migrate(incoming); applyOfficePack(S); save();
+        S = migrate(incoming); applyOfficePack(S);
+        // a backup never overrides HUG's published zones and rules on an agency
+        if (MODE !== "director" && PUBLISHED) applyOfficePack(S, PUBLISHED, true);
+        save();
         const keys = Object.keys(blobs);
         Promise.all(keys.map(k => PhotoStore.put(k, blobs[k]).catch(() => {})))
           .then(() => { closeModal(); renderAll();
@@ -2865,7 +2871,7 @@ function selectZone(id) {
     '<div class="zoneprice">' + money(z.base) + '</div>' +
     '<div class="note" style="margin-bottom:9px">Zone ' + z.id + auctionNote +
       (z.offshore ? " \u00b7 offshore" : "") + '</div>' +
-    (z.floor || z.ceiling
+    (MODE === "director" && (z.floor || z.ceiling)
       ? '<div class="band"><span>' + money(z.floor || 0) + '</span>' +
         '<div class="bandbar"><i></i></div><span>' + money(z.ceiling || 0) + '</span></div>' +
         '<div class="note" style="margin-bottom:9px">Floor and ceiling. Value beyond either still ' +
@@ -2881,7 +2887,7 @@ function selectZone(id) {
       : '<div class="note">No properties filed here.</div>') +
     '<div class="row" style="margin-top:10px">' +
       '<button class="btn sm" id="mapAppraise">Appraise here</button>' +
-      '<button class="btn sm" id="mapZoneRules">Edit price</button>' +
+      (MODE === "director" ? '<button class="btn sm" id="mapZoneRules">Edit price</button>' : '') +
       (editorOn ? '<button class="btn sm" id="mapEditZone">Move or rename</button>' : '') +
     '</div>';
 
@@ -2891,7 +2897,7 @@ function selectZone(id) {
     F = blankForm(); F.zone = z.id; editingPropId = null;
     showView("appraise"); renderAppraiseForm(); renderResult();
   };
-  $("#mapZoneRules").onclick = () => {
+  const zr = $("#mapZoneRules"); if (zr) zr.onclick = () => {
     showView("rules");
     const s = $("#zoneSearch"); if (s) { s.value = z.name; renderRules(); }
   };
@@ -3096,10 +3102,7 @@ async function loadPublishedRules() {
   PUBLISHED = pk;
   if (!pk) return null;
   const changes = applyOfficePack(S, pk);
-  if (changes) {
-    save(); renderAll();
-    toast("HUG rules v" + pk.version + " now in force" + (pk.note ? " \u2014 " + pk.note : "") + ".");
-  }
+  if (changes) { save(); renderAll(); }
   return pk;
 }
 
