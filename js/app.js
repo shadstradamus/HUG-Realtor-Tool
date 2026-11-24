@@ -29,7 +29,7 @@ const Store = {
     catch (e) {
       memFallback = obj; this.ok = false;
       toast(e && e.name === "QuotaExceededError"
-        ? "Out of browser storage. Export a backup, then remove the custom map image."
+        ? "Out of browser storage. Export a backup, then remove some old records."
         : "This browser is blocking saves. Export a backup before you close the tab.");
       return false;
     }
@@ -38,6 +38,7 @@ const Store = {
 };
 
 /* ---------- zones ---------- */
+const MAP_LAYERS = ["atlas", "satellite", "road"];
 // Pin coordinates are pixels on the 2048x2048 map images. Offshore zones
 // sit on the Cayo Perico map; every other zone sits on the Los Santos map.
 /* Warehouses are sold at a flat rate. The interior is the same interior
@@ -222,7 +223,6 @@ function blankState() {
     properties: [], clients: [], loans: [],
     ui: { layer: "atlas", mode: "zones", sections: {} },
     packVersion: 0, packIssued: "", packNote: "", lastExport: null,
-    customMap: null,
     lastForm: null
   };
 }
@@ -246,7 +246,7 @@ function liftForm(f) {
 
 const MIGRATIONS = {
   1: s => { s.loans = s.loans || []; s.clients = s.clients || []; return s; },
-  2: s => { s.ui = s.ui || { layer: "atlas", mode: "zones" }; s.customMap = s.customMap || null; return s; },
+  2: s => { s.ui = s.ui || { layer: "atlas", mode: "zones" }; return s; },
   // v3 kept every multiplier as its own named field. Rebuild them as modules,
   // carrying across whatever the user had edited.
   3: s => {
@@ -391,6 +391,9 @@ function migrate(s) {
   s.rules.policy = deepFill(s.rules.policy || {}, clone(base.rules.policy));
   delete s.rules.policy.societyCommissionPct;
   s.ui = deepFill(s.ui || {}, clone(base.ui));
+  // only the game's own maps are used; older saves may hold an uploaded one
+  delete s.customMap;
+  if (MAP_LAYERS.indexOf(s.ui.layer) < 0) s.ui.layer = "atlas";
   s.zones = Array.isArray(s.zones) && s.zones.length ? s.zones : base.zones;
   s.zones.forEach(z => {
     if (z.floor == null) z.floor = 0;
@@ -2492,9 +2495,6 @@ function renderData() {
       (S.packIssued ? ", issued " + esc(S.packIssued) : "") + '.' +
       (S.packNote ? '<div class="note" style="margin-top:4px">' + esc(S.packNote) + '</div>' : '') + '</div>'
     : '<div class="note">No rules pack applied — these are your own zones and rules.</div>';
-  $("#mapFileInfo").innerHTML = S.customMap
-    ? '<div class="ok">Custom map loaded (' + Math.round(S.customMap.length / 1365) / 1000 + ' MB).</div>'
-    : '<div class="note">Using the shipped map images.</div>';
 }
 
 $("#btnExport").onclick = () => {
@@ -2522,7 +2522,7 @@ $("#loadFile").onchange = e => {
 /* One loader for everything. Works out what the file is and sends it
    where it belongs rather than making you pick the right button. */
 function routeFile(file) {
-  if (file.type && file.type.indexOf("image/") === 0) { loadMapImage(file); return; }
+  if (file.type && file.type.indexOf("image/") === 0) { toast("Pictures go on a property. Drop backups and rules files here."); return; }
   const rd = new FileReader();
   rd.onload = () => {
     const text = String(rd.result || "");
@@ -2537,7 +2537,7 @@ function routeFile(file) {
       toast("That JSON is neither a backup nor a rules pack.");
       return;
     }
-    toast("Couldn't tell what that file was. Backups and rules packs are .json; map art is an image.");
+    toast("Couldn't tell what that file was. Backups and rules packs are .json files.");
   };
   rd.readAsText(file);
 }
@@ -2566,16 +2566,6 @@ function applyBackupFile(incoming) {
       } }]);
 }
 
-function loadMapImage(file) {
-  if (file.size > 4e6) { toast("That image is over 4 MB and won't fit in browser storage."); return; }
-  const rd = new FileReader();
-  rd.onload = () => {
-    S.customMap = rd.result;
-    if (save()) { S.ui.layer = "custom"; save(); renderAll(); applyLayer(); toast("Custom map loaded."); }
-  };
-  rd.readAsDataURL(file);
-}
-
 /* Dropping a file anywhere on the window goes through the same router. */
 ["dragenter", "dragover"].forEach(ev => window.addEventListener(ev, e => {
   if (e.dataTransfer && Array.from(e.dataTransfer.types || []).indexOf("Files") >= 0) {
@@ -2602,23 +2592,6 @@ $("#btnWipe").onclick = () => {
         S = blankState(); save(); closeModal(); renderAll(); toast("All data erased.");
       } }]);
 };
-$("#btnMapUpload").onclick = () => $("#mapFile").click();
-$("#mapFile").onchange = e => {
-  const f = e.target.files[0]; if (!f) return;
-  if (f.size > 4e6) { toast("That image is over 4 MB and will not fit in browser storage."); return; }
-  const rd = new FileReader();
-  rd.onload = () => {
-    S.customMap = rd.result;
-    if (save()) { S.ui.layer = "custom"; save(); toast("Custom map loaded."); renderAll(); applyLayer(); }
-  };
-  rd.readAsDataURL(f);
-};
-$("#btnMapClear").onclick = () => {
-  S.customMap = null;
-  if (S.ui.layer === "custom") S.ui.layer = "atlas";
-  save(); renderData(); applyLayer();
-};
-
 
 /* ============================================================
    Rules pack — zones and rules, shared between agencies
@@ -2696,22 +2669,13 @@ function applyPackFile(pk) {
    Map
    ============================================================ */
 // Maps and the seal ship in img/ beside the page (see js/assets.js).
-const MAP_FILES = {
-  atlas: "GTAV_ATLUS_2048x2048.png",
-  satellite: "GTAV_SATELLITE_2048x2048.png",
-  road: "GTAV_ROADMAP_2048x2048.png"
-};
+// Only the game's own maps, so every pin sits where it is in the game.
 function mapSource(layer) {
-  if (mapRegion() === "cayo") {
-    const l = layer === "custom" ? "atlas" : layer;
-    return (typeof EMBED !== "undefined" && EMBED["cayo_" + l]) || "img/map-cayo-atlas.webp";
-  }
-  if (layer === "custom" && S.customMap) return S.customMap;
-  return (typeof EMBED !== "undefined" && EMBED[layer]) || MAP_FILES[layer] || MAP_FILES.atlas;
+  const l = MAP_LAYERS.indexOf(layer) >= 0 ? layer : "atlas";
+  return EMBED[(mapRegion() === "cayo" ? "cayo_" : "") + l];
 }
 const MAP_SEA = { atlas: "#0fa8d1", satellite: "#143c6a", road: "#1963ae",
   cayo_atlas: "#4eb2cf", cayo_satellite: "#0d2c4e", cayo_road: "#2e3d43" };
-function shownLayer(layer) { return mapRegion() === "cayo" && layer === "custom" ? "atlas" : layer; }
 /* Two maps: Los Santos and Cayo Perico. Both images are 2048 square,
    so pins use the same pixel grid on either one. */
 function mapRegion() { return S.ui.region === "cayo" ? "cayo" : "ls"; }
@@ -2737,16 +2701,13 @@ function applyLayer() {
   img.src = mapSource(layer);
   img.alt = cayo ? "Cayo Perico" : "Los Santos and Blaine County";
   // fill the space around the picture with its own sea colour
-  $("#mapWrap").style.background = layer === "custom" && !cayo ? "" : MAP_SEA[(cayo ? "cayo_" : "") + shownLayer(layer)] || "";
+  $("#mapWrap").style.background = MAP_SEA[(cayo ? "cayo_" : "") + layer] || "";
   img.onerror = () => {
-    $("#mapInfo").innerHTML = '<div class="warn"><strong>That map image will not load.</strong> ' +
-      'Pick another layer, or load your own from the Data tab.</div>';
+    $("#mapInfo").hidden = false;
+    $("#mapInfo").innerHTML = '<div class="warn"><strong>That map will not load.</strong> ' +
+      'Pick another base map, or reload the page.</div>';
   };
-  const shown = shownLayer(layer);
-  $$("#mapLayer button").forEach(b => {
-    b.setAttribute("aria-pressed", String(b.dataset.layer === shown));
-    if (b.dataset.layer === "custom") b.hidden = cayo;   // a custom map only covers Los Santos
-  });
+  $$("#mapLayer button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.layer === layer)));
   $$("#mapRegion button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.region === mapRegion())));
   $$("#mapMode button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === S.ui.mode)));
 }
@@ -3034,7 +2995,6 @@ document.addEventListener("keydown", e => {
 });
 
 $$("#mapLayer button").forEach(b => b.onclick = () => {
-  if (b.dataset.layer === "custom" && !S.customMap) { toast("Load a custom map image from the Data tab first."); return; }
   S.ui.layer = b.dataset.layer; save(); applyLayer();
 });
 $$("#mapRegion button").forEach(b => b.onclick = () => setRegion(b.dataset.region));

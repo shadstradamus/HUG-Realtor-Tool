@@ -154,7 +154,6 @@
             <button data-layer="atlas" aria-pressed="true">Atlas</button>
             <button data-layer="satellite" aria-pressed="false">Satellite</button>
             <button data-layer="road" aria-pressed="false">Road</button>
-            <button data-layer="custom" aria-pressed="false">Custom</button>
           </div>
           <h3>Show</h3>
           <div class="seg" id="mapMode">
@@ -317,7 +316,7 @@
 
     <!-- ============ RECORDS ============ -->
     <section class="view director-only" id="view-data">
-      <div class="pagehead"><div><h1>Records</h1><p>Backups, spreadsheets and your map.</p></div></div>
+      <div class="pagehead"><div><h1>Records</h1><p>Backups and spreadsheets.</p></div></div>
       <div class="cols">
         <div class="panel">
           <h2>Your agency's records</h2>
@@ -327,9 +326,9 @@
               <button class="btn primary" id="btnExport">Export backup</button>
               <button class="btn icon-btn" id="btnLoad">Load file</button>
               <button class="btn" id="btnCsv">Spreadsheet</button>
-              <input type="file" id="loadFile" accept=".json,image/*" hidden>
+              <input type="file" id="loadFile" accept=".json" hidden>
             </div>
-            <p class="note">Load file takes a backup or a map image — you can also drop the file
+            <p class="note">Load file takes a backup — you can also drop the file
             anywhere on the page. Spreadsheet writes your listings out as a CSV for Excel or Google Sheets.</p>
             <div id="storageInfo"></div>
             <div class="director-only">
@@ -357,18 +356,6 @@
             <div class="body note">
               <p style="margin-top:0">Agencies load the published zones, multipliers, house rules and warehouse prices every time they open the MLS. They never see the rules themselves, only the values they produce. Their properties, clients and loans are never touched.</p>
               <p style="margin-top:9px"><span id="buildStamp"></span>. Save format <span id="schemaVer"></span>. Older backups are converted on import.</p>
-            </div>
-          </div>
-          <div class="panel">
-            <h2>Custom base map</h2>
-            <div class="body note">
-              <p style="margin:0">Use your own server's map image instead of the three built in. Keep it under 4 MB.</p>
-              <div class="row" style="margin-top:10px">
-                <button class="btn" id="btnMapUpload">Choose image</button>
-                <button class="btn" id="btnMapClear">Remove</button>
-                <input type="file" id="mapFile" accept="image/*" hidden>
-              </div>
-              <div id="mapFileInfo" style="margin-top:8px"></div>
             </div>
           </div>
         </div>
