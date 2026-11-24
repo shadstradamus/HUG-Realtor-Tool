@@ -1,6 +1,6 @@
 {
   "kind": "dynasty8-office-pack",
-  "version": 11,
+  "version": 12,
   "issued": "2026-11-24",
   "note": "",
   "schema": 9,
@@ -228,7 +228,7 @@
     },
     {
       "id": 11,
-      "name": "Medrazzo Ranch",
+      "name": "La Fueta Blanca Estate",
       "base": 1650000,
       "floor": 1238000,
       "ceiling": 3300000,
@@ -239,7 +239,7 @@
     },
     {
       "id": 19,
-      "name": "Lighthouse",
+      "name": "El Gordo Lighthouse Estate",
       "base": 1600000,
       "floor": 1200000,
       "ceiling": 3200000,
@@ -250,7 +250,7 @@
     },
     {
       "id": 26,
-      "name": "Farmhouse Grapeseed",
+      "name": "The O'Neil Ranch Estate",
       "base": 1550000,
       "floor": 1163000,
       "ceiling": 3100000,
