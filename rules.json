@@ -1,6 +1,6 @@
 {
   "kind": "dynasty8-office-pack",
-  "version": 10,
+  "version": 11,
   "issued": "2026-11-24",
   "note": "",
   "schema": 9,
@@ -258,18 +258,6 @@
       "y": 567,
       "unique": true,
       "real": "Working ranch estate"
-    },
-    {
-      "id": 24,
-      "name": "Cayo Mansion",
-      "base": 1650000,
-      "floor": 1238000,
-      "ceiling": 3300000,
-      "x": 1274,
-      "y": 1547,
-      "offshore": true,
-      "unique": true,
-      "real": "Private island compound"
     },
     {
       "id": 27,
