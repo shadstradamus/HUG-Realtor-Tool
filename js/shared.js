@@ -25,7 +25,8 @@ const Shared = (function () {
   let list = [];
   let roster = [];
   let agencies = [];
-  let bans = [];        // director: everyone banned; others: their own ban, if any
+  let bans = [];
+  let directors = [];   // director: every director's browser ID        // director: everyone banned; others: their own ban, if any
   const bannedMe = () => bans.some(b => b.owner === me());
   let loaded = false, problem = "", busy = false, again = false, timer = null;
   let showing = "mine";
@@ -174,6 +175,7 @@ const Shared = (function () {
       roster = (await api("realtors?select=*&order=name.asc&limit=1000")) || [];
       agencies = (await api("agencies?select=*&order=name.asc")) || [];
       if (me()) bans = (await api("banned?select=*&order=banned_at.desc")) || [];
+      if (MODE === "director" && me()) directors = ((await api("directors?select=user_id")) || []).map(d => d.user_id);
       paintAgencies();
       loaded = true; problem = "";
     } catch (e) { problem = e.message || String(e); }
@@ -348,7 +350,9 @@ const Shared = (function () {
 
     if (!rows.length) {
       $("#pfTable").innerHTML = '<div class="empty"><strong>' + (list.length ? "Nothing matches that" : loaded ? "No shared listings yet" : "Loading…") +
-        '</strong>' + (list.length ? "Try a different address, zone or status." : loaded ? "Saved properties from every agency show up here." : "") + '</div>';
+        '</strong>' + (list.length ? "Try a different address, zone or status." : loaded ? "Saved properties from every agency show up here." : "") + '</div>' +
+        directoryHTML();
+      bindDirectory();
       return;
     }
     $("#pfTable").innerHTML = '<table class="data"><thead><tr><th>Address</th><th>Zone</th><th class="num">Asking</th>' +
@@ -372,9 +376,14 @@ const Shared = (function () {
     $("#pfTable").insertAdjacentHTML("beforeend", directoryHTML());
     $$("#pfTable [data-view-shared]").forEach(b => b.onclick = () => viewListing(b.dataset.viewShared));
     $$("#pfTable [data-take-down]").forEach(b => b.onclick = () => takeDown(b.dataset.takeDown));
+    bindDirectory();
+  }
+  function bindDirectory() {
     $$("#pfTable [data-rm-realtor]").forEach(b => b.onclick = () => removeRealtor(b.dataset.rmRealtor));
     $$("#pfTable [data-ban-realtor]").forEach(b => b.onclick = () => banRealtor(b.dataset.banRealtor));
     $$("#pfTable [data-unban]").forEach(b => b.onclick = () => liftBan(b.dataset.unban));
+    $$("#pfTable [data-director]").forEach(b => b.onclick = () => setDirector(b.dataset.director, true));
+    $$("#pfTable [data-undirector]").forEach(b => b.onclick = () => setDirector(b.dataset.undirector, false));
     stampTables();
   }
 
@@ -400,6 +409,55 @@ const Shared = (function () {
       photoGrid((l.photos || []).map(u => ({ kind: "url", url: u }))),
       [{ label: "Close", run: closeModal }].concat(z ? [{ label: "Show on map", run: () => {
           closeModal(); S.ui.mode = "listings"; save(); showView("map"); selectZone(z.id); } }] : []));
+  }
+
+  /* Director: give or take away access to the Director console. */
+  function setDirector(owner, make) {
+    const r = roster.find(x => x.owner === owner); if (!r) return;
+    openModal(make ? "Make director" : "Remove director",
+      make ? '<p>Make <strong>' + esc(r.name) + '</strong> (' + esc(r.realtor_id) + ') a Regional Director?</p>' +
+             '<p class="note" style="margin-top:8px">They can open the Director console from their own browser without a key, ' +
+             'publish rules, and manage agencies, realtors and bans.</p>'
+           : '<p>Take <strong>' + esc(r.name) + '</strong> off the director list?</p>' +
+             '<p class="note" style="margin-top:8px">They go back to the agency MLS. Anyone holding the backup key can still sign in with it.</p>',
+      [{ label: "Cancel", run: closeModal },
+       { label: make ? "Make director" : "Remove director", kind: make ? "primary" : "danger", run: async () => {
+          closeModal();
+          try {
+            const out = make
+              ? await api("directors", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ user_id: owner }) })
+              : await api("directors?user_id=eq." + encodeURIComponent(owner), { method: "DELETE", headers: { Prefer: "return=representation" } });
+            if (!out || !out.length) throw new Error("");
+            toast(make ? r.name + " is now a director." : r.name + " is no longer a director."); fetchAll();
+          } catch (e) {
+            toast(/duplicate/i.test(e.message || "") ? r.name + " is already a director."
+              : "Not changed. This browser isn\u2019t on the director list.");
+          }
+        } }]);
+  }
+
+  /* ---------- rules in the database ---------- */
+  async function amDirector() {
+    if (!ON) return false;
+    try { await session(); const r = await api("directors?select=user_id&user_id=eq." + me()); return !!(r && r.length); }
+    catch (e) { return false; }
+  }
+  async function latestRules() {
+    if (!ON) return null;
+    try {
+      const r = await fetch(BASE + "/rest/v1/rules_versions?select=pack&order=version.desc&limit=1",
+        { headers: { apikey: CFG.key, Authorization: "Bearer " + CFG.key } });
+      if (!r.ok) return null;
+      const rows = await r.json();
+      return rows && rows[0] && rows[0].pack && rows[0].pack.version ? rows[0].pack : null;
+    } catch (e) { return null; }
+  }
+  async function publishRules(pack) {
+    await api("rules_versions", { method: "POST", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ version: pack.version, pack, note: pack.note || "" }) });
+  }
+  async function rulesHistory() {
+    return (await api("rules_versions?select=version,note,published_at&order=version.desc&limit=10")) || [];
   }
 
   /* Director: the ban list, shown above the directory. */
@@ -512,13 +570,18 @@ const Shared = (function () {
     const rows = roster.map(r => {
       const theirs = list.filter(l => l.owner === r.owner);
       const live = theirs.filter(l => l.status === "Listed" || l.status === "Auction").length;
-      return '<tr><td data-l="Realtor"><strong>' + esc(r.name) + '</strong>' + (r.owner === me() ? ' <span class="chip listed">You</span>' : '') + '</td>' +
+      const isDir = directors.indexOf(r.owner) >= 0;
+      return '<tr><td data-l="Realtor"><strong>' + esc(r.name) + '</strong>' + (r.owner === me() ? ' <span class="chip listed">You</span>' : '') +
+        (isDir ? ' <span class="chip sold">Director</span>' : '') + '</td>' +
         '<td data-l="Realtor ID"><span class="rid">' + esc(r.realtor_id) + '</span></td>' +
         '<td data-l="Agency">' + esc(r.agency || "\u2014") + '</td>' +
         '<td class="num" data-l="Listings">' + theirs.length + '</td>' +
         '<td class="num" data-l="On the market">' + live + '</td>' +
         (MODE === "director" ? '<td>' + (r.owner === me() ? '' :
-          '<span class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn sm" data-rm-realtor="' + esc(r.owner) + '">Remove</button>' +
+          '<span class="row" style="gap:6px;flex-wrap:nowrap">' +
+          (isDir ? '<button class="btn sm" data-undirector="' + esc(r.owner) + '">Remove director</button>'
+                 : '<button class="btn sm" data-director="' + esc(r.owner) + '">Make director</button>') +
+          '<button class="btn sm" data-rm-realtor="' + esc(r.owner) + '">Remove</button>' +
           '<button class="btn sm danger" data-ban-realtor="' + esc(r.owner) + '">Ban</button></span>') + '</td>' : '') + '</tr>';
     }).join("");
     return bannedHTML() + '<h3 class="dirhead">Realtor directory</h3>' +
@@ -573,6 +636,7 @@ const Shared = (function () {
 
   return {
     on: ON, queue, start, mapItems, askName, realtorId,
+    amDirector, latestRules, publishRules, rulesHistory, me: () => me(), profile: () => profile,
     showingAll: () => ON && showing === "all",
     renderAll: renderAllAgencies
   };

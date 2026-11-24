@@ -3304,13 +3304,20 @@ window.addEventListener("resize", () => { if ($("#view-map").classList.contains(
 const MODE = document.body.dataset.mode === "director" ? "director" : "agency";
 let PUBLISHED = null;
 
-async function fetchPublishedRules() {
+async function fetchRulesFile() {
   try {
     const r = await fetch("rules.json?t=" + Date.now(), { cache: "no-store" });
     if (!r.ok) return null;
     const pk = await r.json();
     return pk && pk.version ? pk : null;
   } catch (e) { return null; }
+}
+// Rules are published to the database; rules.json on GitHub is the backup. Newest wins.
+async function fetchPublishedRules() {
+  const fromDb = (typeof Shared !== "undefined" && Shared.latestRules) ? Shared.latestRules() : Promise.resolve(null);
+  const [db, file] = await Promise.all([fromDb.catch(() => null), fetchRulesFile()]);
+  if (db && file) return db.version >= file.version ? db : file;
+  return db || file;
 }
 async function loadPublishedRules() {
   const pk = await fetchPublishedRules();

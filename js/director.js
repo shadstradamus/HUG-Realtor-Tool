@@ -71,7 +71,9 @@ $("#gateForm").addEventListener("submit", async e => {
 });
 
 /* ---------- console ---------- */
+let viaDb = false;   // signed in because this browser is on the director list
 async function openConsole() {
+  $("#edDone").textContent = viaDb && !Key.get() ? "Agency MLS" : "Sign out";
   gate.hidden = true;
   document.body.classList.remove("gated");
   editorOn = true; editorTool = null;
@@ -157,11 +159,19 @@ $("#edPublish").onclick = () => {
         pack.replaceZones = true;
         pack.keepLocalPolicy = false;
         pack.publishedBy = "HUG Regional Director";
-        const err = await publishPack(pack);
+        let err = null;
+        if (viaDb) {
+          try { await Shared.publishRules(pack); } catch (e) { err = /duplicate/i.test(e.message) ? "Someone published v" + next + " first. Reload and try again." : (e.message || "Couldn\u2019t publish."); }
+          // keep the GitHub backup in step when this browser also has the key
+          if (!err && Key.get()) publishPack(pack).then(e2 => { if (e2) toast("Published. The GitHub backup copy didn\u2019t update: " + e2); });
+        } else {
+          err = await publishPack(pack);
+          if (!err && typeof Shared !== "undefined" && Shared.on) Shared.publishRules(pack).catch(() => {});
+        }
         if (err) { btn.disabled = false; btn.textContent = "Publish v" + next; toast(err); return; }
         S.packVersion = pack.version; S.packIssued = pack.issued; S.packNote = pack.note;
         PUBLISHED = pack; save(); closeModal(); renderData(); updateDraft(); renderHistory();
-        toast("Published v" + pack.version + ". Agencies get it within a few minutes.");
+        toast("Published v" + pack.version + ". Agencies get it the next time they open the MLS.");
       } }]);
 };
 async function publishPack(pack) {
@@ -195,7 +205,9 @@ $("#edDiscard").onclick = () => {
 
 /* ---------- sign out ---------- */
 $("#edDone").onclick = () => {
+  if (viaDb && !Key.get()) { location.href = "./"; return; }
   Key.clear();
+  if (viaDb) { location.href = "./"; return; }
   editorOn = false; editorTool = null;
   $("#editorBar").classList.remove("on");
   $("#mapWrap").classList.remove("placing");
@@ -207,6 +219,19 @@ $("#edDone").onclick = () => {
 async function renderHistory() {
   const box = $("#pubHistory"); if (!box) return;
   box.innerHTML = '<p class="note">Loading…</p>';
+  if (viaDb) {
+    try {
+      const rows = await Shared.rulesHistory();
+      box.innerHTML = !rows.length ? '<p class="note">Nothing published yet.</p>' :
+        '<table class="data"><thead><tr><th>Update</th><th>Published</th></tr></thead><tbody>' +
+        rows.map(r => { const w = new Date(r.published_at);
+          return '<tr><td>HUG rules v' + r.version + (r.note ? ': ' + esc(r.note) : '') + '</td><td class="num">' +
+            esc(w.toLocaleDateString() + " " + w.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })) + '</td></tr>'; }).join("") +
+        '</tbody></table>';
+      stampTables();
+    } catch (e) { box.innerHTML = '<div class="warn">' + esc(e.message || "Couldn\u2019t load the history.") + '</div>'; }
+    return;
+  }
   const res = await gh("GET", "/commits?path=" + GH.path + "&sha=" + GH.branch + "&per_page=10");
   if (!res.ok) { box.innerHTML = '<div class="warn">' + esc(ghError(res, "read the history")) + '</div>'; return; }
   if (!res.data.length) { box.innerHTML = '<p class="note">Nothing published yet.</p>'; return; }
@@ -219,9 +244,17 @@ async function renderHistory() {
   stampTables();
 }
 
-/* ---------- start ---------- */
-if (Key.get()) {
-  trySignIn(Key.get()).then(err => { if (err) showGate(err); else openConsole(); });
-} else {
-  showGate();
-}
+/* ---------- start ----------
+   A browser on the director list opens straight in. The GitHub key is the backup. */
+document.body.classList.add("gated");   // stay hidden while we check
+(async () => {
+  if (typeof Shared !== "undefined" && Shared.on && await Shared.amDirector()) { viaDb = true; openConsole(); return; }
+  if (Key.get()) {
+    const err = await trySignIn(Key.get());
+    if (err) showGate(err); else openConsole();
+    return;
+  }
+  const p = typeof Shared !== "undefined" && Shared.profile && Shared.profile();
+  showGate(p && p.name ? p.name + " (" + Shared.realtorId(p.name) + ") isn\u2019t a director yet. Ask a director to mark you in the Realtor directory, or sign in with the backup key."
+                       : "");
+})();
