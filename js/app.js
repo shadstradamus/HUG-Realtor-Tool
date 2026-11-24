@@ -294,11 +294,11 @@ const MIGRATIONS = {
     });
     (s.properties || []).forEach(p => {
       if (!p.form) return;
-      if (!p.form.appraisalModel) p.form.appraisalModel = "legacy";
+      if (!p.form.appraisalModel) p.form.appraisalModel = "modern";
       if (p.form.specialPremium == null) p.form.specialPremium = 0;
     });
     if (s.lastForm) {
-      if (!s.lastForm.appraisalModel) s.lastForm.appraisalModel = "legacy";
+      if (!s.lastForm.appraisalModel) s.lastForm.appraisalModel = "modern";
       if (s.lastForm.specialPremium == null) s.lastForm.specialPremium = 0;
     }
     return s;
@@ -745,7 +745,8 @@ function appraiseModern(f) {
 }
 
 function appraise(f) {
-  return f.appraisalModel === "legacy" ? appraiseLegacy(f) : appraiseModern(f);
+  // Legacy was retired; every appraisal uses the one model.
+  return appraiseModern(f);
 }
 
 function listingCopy(f, r) {
@@ -798,6 +799,8 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal()
    Appraisal form — built entirely from rules.mods
    ============================================================ */
 let F = Object.assign(blankForm(), S.lastForm || {});
+F.appraisalModel = "modern";   // Legacy is retired
+(S.properties || []).forEach(p => { if (p.form) p.form.appraisalModel = "modern"; });
 if (!F.mods) F.mods = {};
 let editingPropId = null;
 
@@ -878,17 +881,13 @@ function renderAppraiseForm() {
     '<div style="margin-bottom:9px"><span class="lab">Address or property name</span>' +
     '<input id="f_address" data-f="address" value="' + esc(F.address) +
     '" placeholder="e.g. 2044 North Conker Avenue"></div>' +
-    '<div class="grid3">' +
+    '<div class="grid2">' +
       '<div><span class="lab">Zone</span><select id="f_zone" data-f="zone">' + zoneOpts + '</select></div>' +
       (roomsMod
         ? '<div><span class="lab">Rooms</span><input id="m_rooms" data-m="rooms" type="number" min="0" ' +
           'value="' + (+(F.mods || {}).rooms || 0) + '"></div>'
         : '') +
-      '<div><span class="lab">Model</span><select id="f_model" data-f="appraisalModel">' +
-        '<option value="modern"' + (F.appraisalModel !== "legacy" ? " selected" : "") + '>Modern</option>' +
-        '<option value="legacy"' + (F.appraisalModel === "legacy" ? " selected" : "") + '>Legacy</option>' +
-      '</select></div>' +
-    '</div></fieldset>';
+      '</div></fieldset>';
 
   const groups = GROUPS.concat(mods.map(m => m.group).filter(g => GROUPS.indexOf(g) < 0));
   groups.forEach(g => {
@@ -1250,8 +1249,7 @@ function renderPhotoStrip() {
 function renderResult() {
   const r = appraise(F);
   $("#outAppraisal").textContent = money(r.appraisal);
-  $("#outList").textContent = (r.model === "modern" ? "Modern" : "Legacy") + " · " +
-    r.zone.name + " · asking " + money(r.list) + (r.furnAdd ? " incl. furniture" : "");
+  $("#outList").textContent = r.zone.name + " · asking " + money(r.list) + (r.furnAdd ? " incl. furniture" : "");
 
   let flags = "";
   if (r.auction) flags += '<div class="tip" style="margin-bottom:8px"><strong>Auction required</strong> — ' +
@@ -2055,16 +2053,12 @@ function renderRules() {
         (dearest ? money(dearest.ceiling || dearest.base) : "\u2014") +
         '</div><div class="l">Ordinary market</div></div>' +
     '</div>' +
-    '<p class="note"><strong>Modern</strong> starts from the zone base. ' + P.locationShare +
+    '<p class="note"><strong>How an appraisal is built.</strong> It starts from the zone base. ' + P.locationShare +
     '% of it is location and never moves; the rest scales with rooms, four being the baseline. ' +
     'Features add a percentage of base on top, counting in full to +' + P.featureFullTo +
     '% and at ' + P.featureTaper + '% beyond that. Disclosures take value off, never more than ' +
     P.maxDepreciationPct + '% combined. Torture rooms, drug labs and panic rooms are kept off the ' +
     'appraisal and quoted as a separate premium.</p>' +
-    '<p class="note" style="margin-top:8px"><strong>Legacy</strong> multiplies the base by the square ' +
-    'root of every multiplier together, except the ones marked as sitting outside the root.</p>' +
-    '<p class="note" style="margin-top:8px"><strong>Both models are live</strong> \u2014 each appraisal ' +
-    'uses whichever its agent picked, so the two columns below both matter.</p>' +
     '<p class="note" style="margin-top:8px">' + (P.auctionsEnabled
       ? 'Custom interiors, exotic features' + (P.uniqueForcesAuction ? ' and unique properties' : '') +
         ' are flagged for auction.'
@@ -2130,7 +2124,7 @@ function renderRules() {
 
   $("#rulesMult").innerHTML = visible.length
     ? '<table class="data modtable"><thead><tr><th></th><th>Multiplier</th><th>Type</th>' +
-      '<th>Legacy \u00d7</th><th>Modern %</th><th>Root</th><th>Section</th><th></th></tr></thead><tbody>' +
+      '<th>Adds</th><th>Section</th><th></th></tr></thead><tbody>' +
       visible.map(m => {
         const i = mods.indexOf(m);
         return '<tr><td style="white-space:nowrap;padding-right:0">' +
@@ -2143,9 +2137,7 @@ function renderRules() {
           (m.forcesAuction && S.rules.policy.auctionsEnabled
             ? '<div class="note">forces an auction</div>' : '') + '</td>' +
         '<td class="note">' + esc(KIND_LABEL[m.kind] || m.kind) + '</td>' +
-        '<td>' + legacyCell(m) + '</td>' +
         '<td>' + modernCell(m) + '</td>' +
-        '<td>' + (m.outside ? '<span class="chip auction">outside</span>' : '<span class="chip listed">inside</span>') + '</td>' +
         '<td class="note">' + esc(m.group || "\u2014") + '</td>' +
         '<td style="white-space:nowrap"><button class="btn sm" data-editmod="' + m.id + '">Edit</button> ' +
           '<button class="btn sm danger icon" data-delmod="' + m.id + '" title="Delete ' + esc(m.label) +
@@ -2174,16 +2166,6 @@ function renderRules() {
   $$("#rulesMult [data-delmod]").forEach(b => b.onclick = () => deleteMod(b.dataset.delmod));
   $$("#rulesMult [data-up]").forEach(b => b.onclick = () => moveMod(b.dataset.up, -1));
   $$("#rulesMult [data-down]").forEach(b => b.onclick = () => moveMod(b.dataset.down, 1));
-
-  /* ---- what sits outside the root ---- */
-  const outsideMods = mods.filter(m => m.outside);
-  $("#rulesStruct").innerHTML =
-    '<p class="note">Legacy only. Inside the root is the default; outside means the ' +
-    'multiplier hits at full strength, the way warehouses do. Change it on any multiplier with Edit.</p>' +
-    '<div style="margin-top:10px">' +
-    (outsideMods.length
-      ? outsideMods.map(m => '<span class="chip auction" style="margin:0 4px 4px 0">' + esc(m.label) + '</span>').join("")
-      : '<span class="note">Nothing sits outside the root right now.</span>') + '</div>';
 
   /* ---- house rules ---- */
   $("#rulesPolicy").innerHTML = POLICY_FIELDS.map(f =>
@@ -2267,13 +2249,12 @@ function modModal(id) {
       '</select></div></div>' +
     '<div style="margin-bottom:10px"><span class="lab">Note on the form (optional)</span>' +
       '<input id="d_hint" value="' + esc(m.hint || "") + '"></div>' +
-    '<label class="row" style="gap:6px"><input type="checkbox" id="d_out"' + (m.outside ? " checked" : "") +
-      '> Apply outside the square root, at full strength</label>' +
+    '<input type="checkbox" id="d_out" hidden' + (m.outside ? " checked" : "") + '>' +
     (S.rules.policy.auctionsEnabled
       ? '<label class="row" style="gap:6px;margin-top:5px"><input type="checkbox" id="d_auc"' +
         (m.forcesAuction ? " checked" : "") + '> A property with this must be sold at auction</label>'
       : '') +
-    '<p class="note" style="margin-top:9px">A value under 1 makes it a penalty.</p>',
+    '',
     [id ? { label: ICON_TRASH + " Delete", kind: "danger icon-btn", run: () => { closeModal(); deleteMod(id); } }
         : { label: "Cancel", run: closeModal },
      { label: id ? "Save" : "Add", kind: "primary", run: () => {
@@ -2323,8 +2304,8 @@ function modModal(id) {
   const pctRow = (kind) => {
     if (kind === "choice") return "";
     const many = (kind === "count" || kind === "tiered");
-    return '<div style="margin-top:10px;padding-top:10px;border-top:1px dotted var(--rule)">' +
-      '<span class="lab">Modern model</span>' +
+    return '<div>' +
+      '<span class="lab">What it adds</span>' +
       '<div class="row" style="gap:14px;margin-bottom:8px">' +
         '<label class="row" style="gap:5px"><input type="radio" name="d_mode" value="pct"' +
           (flatMode ? "" : " checked") + '> Share of the zone price</label>' +
@@ -2349,12 +2330,12 @@ function modModal(id) {
     const box = $("#d_values", mm);
     if (kind === "choice") {
       const opts = (m.kind === "choice" && m.options) ? m.options : [{ label: "None", value: 1 }, { label: "Yes", value: 1.2 }];
-      box.innerHTML = '<span class="lab">Options — label, legacy multiplier, modern %. ' +
-        'The first should usually be a 1× / 0% "None".</span>' +
+      box.innerHTML = '<span class="lab">Options — label and % of the zone base it adds. ' +
+        'The first should usually be a 0% "None".</span>' +
         '<div id="d_opts">' + opts.map(o =>
           '<div class="row optrow" style="gap:6px;margin-bottom:5px">' +
           '<input class="ol" value="' + esc(o.label) + '" placeholder="Label">' +
-          '<input class="ov" type="number" step="0.05" value="' + o.value + '" style="max-width:78px" title="Legacy multiplier">' +
+          '<input class="ov" type="number" step="0.05" value="' + o.value + '" hidden>' +
           '<input class="op" type="number" step="1" value="' + (o.pct == null ? 0 : o.pct) + '" style="max-width:70px" title="Modern %">' +
           '<button class="btn sm danger icon" data-rmopt title="Remove option" aria-label="Remove option">' +
           ICON_TRASH + '</button></div>').join("") + '</div>' +
@@ -2363,7 +2344,7 @@ function modModal(id) {
         const row = document.createElement("div");
         row.className = "row optrow"; row.style.cssText = "gap:6px;margin-bottom:5px";
         row.innerHTML = '<input class="ol" placeholder="Label"><input class="ov" type="number" step="0.05" ' +
-          'value="1.2" style="max-width:78px" title="Legacy multiplier">' +
+          'value="1.2" hidden>' +
           '<input class="op" type="number" step="1" value="5" style="max-width:70px" title="Modern %">' +
           '<button class="btn sm danger icon" data-rmopt ' +
           'title="Remove option" aria-label="Remove option">' + ICON_TRASH + '</button>';
@@ -2372,18 +2353,17 @@ function modModal(id) {
       };
       $$("#d_values [data-rmopt]", mm).forEach(b => b.onclick = () => b.closest(".optrow").remove());
     } else if (kind === "tiered") {
-      box.innerHTML = '<div class="grid2"><div><span class="lab">First one</span>' +
+      box.innerHTML = '<div class="grid2" hidden><div><span class="lab">First one</span>' +
         '<input id="d_val" type="number" step="0.05" value="' + (m.value || 1.4) + '"></div>' +
         '<div><span class="lab">Each after that</span>' +
         '<input id="d_val2" type="number" step="0.05" value="' + (m.value2 || 1.2) + '"></div></div>';
     } else if (kind === "free") {
-      box.innerHTML = '<div class="grid2"><div><span class="lab">Lowest allowed</span>' +
+      box.innerHTML = '<div class="grid2" hidden><div><span class="lab">Lowest allowed</span>' +
         '<input id="d_val" type="number" step="0.1" value="' + (m.value || 1.2) + '"></div>' +
         '<div><span class="lab">Highest allowed</span>' +
         '<input id="d_val2" type="number" step="0.1" value="' + (m.value2 || 5) + '"></div></div>';
     } else {
-      box.innerHTML = '<span class="lab">Multiplier' + (kind === "count" ? ", each one" : "") + '</span>' +
-        '<input id="d_val" type="number" step="0.05" value="' + (m.value || 1.2) + '">';
+      box.innerHTML = '<input id="d_val" type="number" step="0.05" value="' + (m.value || 1.2) + '" hidden>';
     }
     if (kind !== "choice") {
       box.innerHTML += pctRow(kind);
@@ -2422,11 +2402,11 @@ function csvCell(v) {
 }
 $("#btnCsv").onclick = () => {
   if (!S.properties.length) { toast("Nothing to write out yet."); return; }
-  const head = ["Address", "Zone", "Model", "Rooms", "Appraised", "Asking", "Sold for",
+  const head = ["Address", "Zone", "Rooms", "Appraised", "Asking", "Sold for",
     "Status", "Client", "Photos", "Saved", "Notes"];
   const rows = S.properties.map(p => {
     const f = p.form || {}, mods = f.mods || {};
-    return [p.address, (zoneById(p.zone) || {}).name || "", f.appraisalModel || "modern",
+    return [p.address, (zoneById(p.zone) || {}).name || "",
       mods.rooms || 0, p.appraisal || 0, p.list || 0, p.soldFor == null ? "" : p.soldFor,
       p.status, (clientById(p.clientId) || {}).name || "", (f.photos || []).length,
       p.created ? new Date(p.created).toISOString().slice(0, 10) : "", p.notes || ""];
