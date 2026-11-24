@@ -2769,6 +2769,7 @@ function regionFor(z) { if (z && !zoneOnMap(z)) setRegion(z.offshore ? "cayo" : 
 const MAP_PX = 2048;
 const view = { x: 0, y: 0, k: 0.35 };
 let editorOn = false, editorTool = null, selectedZone = null;
+let movingZone = null;   // one zone whose pin is being moved from its info card
 
 function applyLayer() {
   const layer = S.ui.layer || "atlas";
@@ -2835,15 +2836,23 @@ function zoomAt(cx, cy, factor) {
   view.k = k2;
   applyTransform();
 }
-function priceColor(base) {
-  const lo = 65000, hi = 500000;
-  const t = Math.max(0, Math.min(1, (base - lo) / (hi - lo)));
-  // low value reads green, high value gold, the dearest a deep amber
-  const hue = 146 - 138 * t;
-  const sat = 44 + 34 * t;
-  const lit = 33 + 16 * t - (t > .8 ? 6 * (t - .8) * 5 : 0);
-  return "hsl(" + hue + " " + sat + "% " + lit + "%)";
+/* Pins are coloured by where a zone's price ranks among every zone, so the
+   spread of colours stays even however the prices are set: green is the
+   cheapest areas, then yellow and orange, red the most expensive. */
+function priceRank(base) {
+  const all = S.zones.map(z => +z.base || 0).sort((a, b) => a - b);
+  if (all.length < 2) return 0.5;
+  let below = 0, same = 0;
+  all.forEach(v => { if (v < base) below++; else if (v === base) same++; });
+  return Math.max(0, Math.min(1, (below + Math.max(0, same - 1) / 2) / (all.length - 1)));
 }
+function rankColor(t) {
+  const hue = 140 - 136 * t;
+  const sat = 52 + 26 * t;
+  const lit = 36 + 14 * Math.sin(Math.PI * t) - 4 * t;
+  return "hsl(" + hue.toFixed(1) + " " + sat.toFixed(1) + "% " + lit.toFixed(1) + "%)";
+}
+function priceColor(base) { return rankColor(priceRank(base)); }
 function statusColor(s) {
   return { Draft: "#8a929e", Listed: "#23824f", Auction: "#c79a12", "Under offer": "#4a3f8f",
            Sold: "#0a1f44", Repossessed: "#a12a1e" }[s] || "#8a929e";
@@ -2891,18 +2900,21 @@ function drawPins() {
   S.zones.forEach(z => {
     if (!zoneOnMap(z)) return;
     const st = zoneStats(z.id);
-    const colour = mode === "value" ? priceColor(z.base) : (z.unique ? "#c79a12" : "#13568c");
+    const colour = mode === "listings" ? (z.unique ? "#c79a12" : "#13568c") : priceColor(z.base);
     const label = mode === "value"
       ? z.name + " \u00b7 " + money(z.floor || z.base) + "\u2013" + money(z.ceiling || z.base)
       : mode === "listings"
         ? z.name + (st.count ? " \u00b7 " + money(st.worth) : "")
         : z.name + (st.count ? " \u00b7 " + st.count : "");
     const el = makePin("zone" + (String(selectedZone) === String(z.id) ? " sel" : "") +
+      (z.unique && mode !== "listings" ? " estate" : "") +
       (mode === "listings" ? " muted" : ""), z.x, z.y, colour, label,
       z.name + " \u2014 " + money(z.base) +
         (st.count ? " \u00b7 " + st.count + (st.count === 1 ? " property" : " properties") : ""),
       () => selectZone(z.id));
-    if (editorOn && editorTool === "move") makeDraggable(el, z);
+    if (editorOn && (editorTool === "move" || String(movingZone) === String(z.id))) {
+      el.classList.add("movable"); makeDraggable(el, z);
+    }
   });
 
   wrap.appendChild(frag);
@@ -2936,7 +2948,7 @@ function makeDraggable(el, z) {
     const up = () => {
       el.removeEventListener("pointermove", move);
       el.removeEventListener("pointerup", up);
-      save(); renderRules(); toast(z.name + " moved to " + z.x + ", " + z.y + ".");
+      moveZoneTo(z, z.x, z.y); toast(z.name + " moved.");
     };
     el.addEventListener("pointermove", move);
     el.addEventListener("pointerup", up);
@@ -2948,6 +2960,7 @@ function selectZone(id) {
   if (!z) { clearZone(); return; }
   regionFor(z);
   selectedZone = id;
+  if (String(movingZone) === String(id)) { showMovePanel(z); drawPins(); return; }
   const st = zoneStats(id);
   const P = S.rules.policy;
   const auctionNote = z.unique && P.auctionsEnabled && P.uniqueForcesAuction
@@ -2977,7 +2990,8 @@ function selectZone(id) {
     '<div class="row" style="margin-top:10px">' +
       '<button class="btn sm" id="mapAppraise">Appraise here</button>' +
       (MODE === "director" ? '<button class="btn sm" id="mapZoneRules">Edit price</button>' : '') +
-      (editorOn ? '<button class="btn sm" id="mapEditZone">Move or rename</button>' : '') +
+      (editorOn ? '<button class="btn sm" id="mapMoveZone">Move pin</button>' +
+                  '<button class="btn sm" id="mapEditZone">Edit zone</button>' : '') +
     '</div>';
 
   $$("#mapInfo [data-mp]").forEach(b => b.onclick = () => propertyModal(b.dataset.mp));
@@ -2991,10 +3005,43 @@ function selectZone(id) {
     const s = $("#zoneSearch"); if (s) { s.value = z.name; renderRules(); }
   };
   const ez = $("#mapEditZone"); if (ez) ez.onclick = () => zoneModal(z.id);
+  const mz = $("#mapMoveZone"); if (mz) mz.onclick = () => startMoveZone(z.id);
+  drawPins();
+}
+
+/* Moving one pin: drag it, or tap the map where it should go. */
+function startMoveZone(id) {
+  const z = zoneById(id); if (!z) return;
+  if (editorTool) { editorTool = null; $("#mapWrap").classList.remove("placing"); markTool(null); }
+  movingZone = z.id;
+  $("#mapWrap").classList.add("placing");
+  showView("map"); selectZone(z.id);
+}
+function stopMoveZone() {
+  const id = movingZone;
+  movingZone = null;
+  $("#mapWrap").classList.remove("placing");
+  if (id != null) selectZone(id); else drawPins();
+}
+function showMovePanel(z) {
+  $("#mapInfo").hidden = false;
+  $("#mapInfo").innerHTML =
+    '<h3>Moving ' + esc(z.name) + '</h3>' +
+    '<p class="note" style="margin:6px 0 10px">Drag the pin, or tap the map where it goes. ' +
+      'It goes out to agencies when you publish.</p>' +
+    '<div class="note" style="margin-bottom:10px">Now at ' + z.x + ', ' + z.y + '</div>' +
+    '<div class="row"><button class="btn sm primary" id="mapMoveDone">Done</button></div>';
+  $("#mapMoveDone").onclick = stopMoveZone;
+}
+function moveZoneTo(z, x, y) {
+  z.x = Math.max(0, Math.min(MAP_PX, x)); z.y = Math.max(0, Math.min(MAP_PX, y));
+  save(); renderRules();
+  if (String(movingZone) === String(z.id)) showMovePanel(z);
   drawPins();
 }
 
 function clearZone() {
+  if (movingZone != null) { movingZone = null; $("#mapWrap").classList.remove("placing"); }
   selectedZone = null;
   $("#mapInfo").hidden = true;
   $("#mapInfo").innerHTML = "";
@@ -3007,8 +3054,9 @@ function clearZone() {
   let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0, moved = false;
   wrap.addEventListener("pointerdown", e => {
     if (e.target.closest(".map-hud") || e.target.closest(".pin")) return;
+    moved = false;
     if (editorOn && editorTool === "place") return;
-    dragging = true; moved = false;
+    dragging = true;
     sx = e.clientX; sy = e.clientY; ox = view.x; oy = view.y;
     wrap.classList.add("panning"); wrap.setPointerCapture(e.pointerId);
   });
@@ -3026,7 +3074,17 @@ function clearZone() {
     drawPins();
   }, { passive: false });
   wrap.addEventListener("click", e => {
-    if (e.target.closest(".map-hud") || e.target.closest(".pin")) return;
+    // a button that redrew its own card is no longer on the page; it was never a map tap
+    if (!e.target.isConnected || e.target.closest(".map-hud") || e.target.closest(".pin")) return;
+    if (editorOn && movingZone != null) {
+      if (moved) return;
+      const z = zoneById(movingZone); if (!z) return;
+      const r = wrap.getBoundingClientRect();
+      moveZoneTo(z, Math.round((e.clientX - r.left - view.x) / view.k),
+                    Math.round((e.clientY - r.top - view.y) / view.k));
+      toast(z.name + " moved.");
+      return;
+    }
     if (!editorOn && selectedZone && !moved) { clearZone(); return; }
     if (editorOn && editorTool === "place") {
       const r = wrap.getBoundingClientRect();
@@ -3065,6 +3123,7 @@ document.addEventListener("keydown", e => {
   else if (e.key === "ArrowDown") { view.y -= step; applyTransform(); }
   else if (e.key === "+" || e.key === "=") { zoomAt(w / 2, hh / 2, 1.3); drawPins(); }
   else if (e.key === "-" || e.key === "_") { zoomAt(w / 2, hh / 2, 1 / 1.3); drawPins(); }
+  else if (e.key === "Escape" && movingZone != null) { stopMoveZone(); }
   else if (e.key === "Escape" && selectedZone) { clearZone(); }
   else return;
   e.preventDefault();
@@ -3079,12 +3138,18 @@ $$("#mapMode button").forEach(b => b.onclick = () => {
 });
 function renderLegend() {
   const m = S.ui.mode;
-  $("#mapLegend").innerHTML = m === "value"
-    ? '<i style="background:' + priceColor(65000) + '"></i>cheapest &nbsp; <i style="background:' + priceColor(500000) + '"></i>dearest'
-    : m === "listings"
-      ? '<i style="background:#23824f"></i>listed <i style="background:#c79a12;margin-left:7px"></i>auction ' +
-        '<i style="background:#0a1f44;margin-left:7px"></i>sold'
-      : '<i style="background:#13568c"></i>zone <i style="background:#c79a12;margin-left:7px"></i>estate';
+  if (m === "listings") {
+    $("#mapLegend").innerHTML = '<i style="background:#23824f"></i>listed <i style="background:#c79a12;margin-left:7px"></i>auction ' +
+      '<i style="background:#0a1f44;margin-left:7px"></i>sold';
+    return;
+  }
+  const bases = S.zones.map(z => +z.base || 0).filter(Boolean);
+  const lo = bases.length ? Math.min.apply(null, bases) : 0, hi = bases.length ? Math.max.apply(null, bases) : 0;
+  const stops = [0, .25, .5, .75, 1].map(t => rankColor(t)).join(",");
+  $("#mapLegend").innerHTML =
+    '<div class="pricescale" style="background:linear-gradient(90deg,' + stops + ')"></div>' +
+    '<div class="pricescale-ends"><span>' + money(lo) + '</span><span>Cheaper \u2192 pricier</span><span>' + money(hi) + '</span></div>' +
+    '<div style="margin-top:5px"><i class="estate-key"></i>estate</div>';
 }
 
 /* ============================================================
@@ -3096,12 +3161,14 @@ function markTool(id) {
 }
 // Each map tool is a toggle: tap again to put it down.
 $("#edPlace").onclick = () => {
+  if (movingZone != null) stopMoveZone();
   if (editorTool === "place") { editorTool = null; $("#mapWrap").classList.remove("placing"); markTool(null); drawPins(); return; }
   editorTool = "place"; $("#mapWrap").classList.add("placing");
   markTool("edPlace"); showView("map"); toast("Tap the map where the new zone goes. Tap the button again to stop.");
   drawPins();
 };
 $("#edMove").onclick = () => {
+  if (movingZone != null) stopMoveZone();
   if (editorTool === "move") { editorTool = null; markTool(null); drawPins(); return; }
   editorTool = "move"; $("#mapWrap").classList.remove("placing");
   markTool("edMove"); showView("map"); toast("Drag any zone pin to move it. Tap the button again to stop.");
@@ -3125,7 +3192,7 @@ function zoneModal(id, draft) {
     '<label class="row" style="gap:6px"><input type="checkbox" id="z_uniq"' + (z.unique ? " checked" : "") +
       '> Estate</label>' +
     '<p class="note" style="margin-top:9px">Dropped at ' + z.x + ", " + z.y + " on the " +
-      (z.offshore ? "Cayo Perico" : "Los Santos") + " map. Drag it later with the move tool.</p>",
+      (z.offshore ? "Cayo Perico" : "Los Santos") + " map." + (id ? " Use Move pin to put it somewhere else." : "") + "</p>",
     [{ label: "Cancel", run: closeModal },
      { label: id ? "Save zone" : "Create zone", kind: "primary", run: () => {
         const name = $("#z_name", m).value.trim();
